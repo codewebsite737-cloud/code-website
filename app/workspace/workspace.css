@@ -2406,6 +2406,291 @@ body:has(.workspace) {
   }
 }
 
+/* Focused visual section editing */
+.preview-tabs .section-mode-label {
+  color: #ff8a60;
+}
+
+.preview-tabs .section-mode-label::after {
+  display: none;
+}
+
+.preview-actions .section-mode-toggle {
+  width: auto;
+  min-width: 58px;
+  padding: 0 8px;
+  border: 1px solid #343640;
+  border-radius: 7px;
+  color: #a9adb8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.preview-actions .section-mode-toggle.active {
+  border-color: #ff6b357d;
+  background: #ff6b3518;
+  color: #ff9a75;
+}
+
+.preview-canvas {
+  position: relative;
+}
+
+.preview-canvas iframe {
+  display: block;
+}
+
+.section-edit-guide {
+  max-width: calc(100% - 24px);
+  min-height: 30px;
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid #ff6b3552;
+  border-radius: 999px;
+  background: #111218e8;
+  color: #dedfe5;
+  font-size: 11px;
+  font-weight: 650;
+  box-shadow: 0 8px 30px #0008;
+  backdrop-filter: blur(16px);
+  pointer-events: none;
+}
+
+.section-edit-guide i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #ff6b35;
+  box-shadow: 0 0 0 4px #ff6b3521;
+}
+
+.section-inspector {
+  width: min(390px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 12px;
+  overflow: auto;
+  border: 1px solid #3a3d47;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 90% 0%, #ff6b3515, transparent 38%),
+    #111218f5;
+  color: #eef0f4;
+  box-shadow: 0 18px 58px #000b, inset 0 1px #ffffff0a;
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+
+.section-inspector button,
+.section-html-editor summary {
+  font: inherit;
+}
+
+.section-inspector-head {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2b2d36;
+}
+
+.section-inspector-head > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.section-inspector-head span {
+  color: #ff936b;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .11em;
+}
+
+.section-inspector-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #f0f1f4;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-inspector-head strong small {
+  margin-left: 7px;
+  color: #747986;
+  font: 500 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.section-inspector-head > div:last-child {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.section-inspector-head button {
+  min-height: 28px;
+  padding: 0 9px;
+  border: 1px solid #343640;
+  border-radius: 7px;
+  background: #1b1c22;
+  color: #c9cbd2;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.section-inspector-head button:last-child {
+  width: 28px;
+  padding: 0;
+  font-size: 16px;
+}
+
+.section-instruction {
+  display: grid;
+  gap: 7px;
+  padding: 12px 12px 8px;
+}
+
+.section-instruction > span {
+  color: #c9cbd2;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.section-instruction textarea,
+.section-html-editor textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #343640;
+  border-radius: 9px;
+  outline: none;
+  background: #0b0c10;
+  color: #e7e8ec;
+}
+
+.section-instruction textarea {
+  min-height: 72px;
+  padding: 9px 10px;
+  font: 500 12px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.section-instruction textarea:focus,
+.section-html-editor textarea:focus {
+  border-color: #ff6b35a8;
+  box-shadow: 0 0 0 3px #ff6b3517;
+}
+
+.section-inspector-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px 12px;
+}
+
+.section-inspector-actions small {
+  color: #818692;
+  font-size: 9px;
+}
+
+.section-inspector-actions button,
+.section-html-editor > button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #ff5a1f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+  box-shadow: 0 6px 18px #ff5a1f24;
+}
+
+.section-inspector button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.section-html-editor {
+  padding: 0 12px 12px;
+  border-top: 1px solid #292b33;
+}
+
+.section-html-editor summary {
+  padding: 10px 0;
+  color: #a9adb7;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.section-html-editor textarea {
+  min-height: 130px;
+  max-height: 250px;
+  padding: 9px 10px;
+  font: 500 10px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre;
+}
+
+.section-html-editor > button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+@media (max-width: 820px), (max-width: 1100px) and (pointer: coarse) {
+  .section-inspector {
+    width: calc(100% - 16px);
+    max-height: calc(100% - 16px);
+    right: 8px;
+    bottom: 8px;
+    border-radius: 13px;
+  }
+
+  .section-edit-guide {
+    right: 8px;
+    bottom: 8px;
+  }
+}
+
+@media (max-width: 520px) {
+  .preview-tabs .section-mode-label {
+    display: none;
+  }
+
+  .preview-actions .section-mode-toggle {
+    min-width: 50px;
+    padding: 0 6px;
+    font-size: 9px;
+  }
+
+  .section-inspector-head {
+    align-items: flex-start;
+  }
+
+  .section-inspector-head button:first-child {
+    display: none;
+  }
+
+  .section-inspector-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .section-inspector-actions button {
+    width: 100%;
+  }
+}
+
 /* Readable workspace typography
  *
  * The product is intentionally dense, but no meaningful copy should depend on
