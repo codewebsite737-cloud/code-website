@@ -18,6 +18,7 @@ type BuildWizardProps = {
   cloudConfigured: boolean;
   cloudAuthenticated: boolean;
   cloudConnecting: boolean;
+  cloudModel: string;
   aiWorking: boolean;
   onClose: () => void;
   onSelectCategory: (category: ProjectCategory | null) => void;
@@ -37,6 +38,7 @@ export function BuildWizard({
   cloudConfigured,
   cloudAuthenticated,
   cloudConnecting,
+  cloudModel,
   aiWorking,
   onClose,
   onSelectCategory,
@@ -189,6 +191,13 @@ export function BuildWizard({
                   <b>
                     Server Cloud AI {cloudConnected && <em>READY</em>}
                   </b>
+                  {cloudConnected && cloudModel && (
+                    <small className="cloud-model-name">
+                      {cloudModel === "openai/gpt-oss-20b:free"
+                        ? "OpenAI · gpt-oss-20b · Free"
+                        : cloudModel}
+                    </small>
+                  )}
                   <p>
                     {cloudConnected
                       ? "Uses the protected backend API key and per-user quota."
