@@ -29,8 +29,8 @@ timeouts, strict structured output, response-size limits, metadata-only usage
 events, and a local Instant Builder fallback.
 
 The route is safely disabled until `OPENROUTER_API_KEY` is configured. It uses
-`openrouter/free` by default and supports `OPENROUTER_MODEL` and
-`AI_DAILY_LIMIT` overrides.
+`openai/gpt-oss-20b:free` by default with two zero-cost coding fallbacks and
+supports `OPENROUTER_MODEL` and `AI_DAILY_LIMIT` overrides.
 
 ## Route boundaries
 
