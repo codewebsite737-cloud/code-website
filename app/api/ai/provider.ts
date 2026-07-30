@@ -280,13 +280,6 @@ async function readBoundedResponse(response: Response) {
   return raw;
 }
 
-function retryDelay(response: Response) {
-  const seconds = Number(response.headers.get("retry-after"));
-  return Number.isFinite(seconds) && seconds > 0
-    ? Math.min(1_500, Math.ceil(seconds * 1_000))
-    : 400;
-}
-
 function providerHttpError(status: number) {
   if (status === 401 || status === 403) {
     return new AiProviderError(
