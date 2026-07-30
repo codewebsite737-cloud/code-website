@@ -189,6 +189,24 @@ test("builds a fresh restricted preview document from the current code snapshot"
   assert.match(document, /form-action 'none'/);
 });
 
+test("adds section editing only to the workspace preview, never to exports", () => {
+  const files = {
+    "index.html": "<main><nav>Menu</nav><section>Hero</section></main>",
+    "styles.css": "body { margin: 0; }",
+    "app.js": "",
+    "package.json": "{}",
+  };
+  const editorPreview = buildPreviewDocument(files, {
+    sectionEditor: true,
+  });
+  const exportedDocument = buildPreviewDocument(files);
+
+  assert.match(editorPreview, /data-skycode-section-index/);
+  assert.match(editorPreview, /section-selected/);
+  assert.doesNotMatch(exportedDocument, /data-skycode-section-index/);
+  assert.doesNotMatch(exportedDocument, /skycode-section-selected/);
+});
+
 test("keeps embedded closing tags from escaping the preview style or script", () => {
   const document = buildPreviewDocument({
     "index.html": "<main>Safe preview</main>",
