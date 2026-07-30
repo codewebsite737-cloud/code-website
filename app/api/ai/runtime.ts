@@ -1,4 +1,4 @@
-const DEFAULT_MODEL = "openai/gpt-oss-20b:free";
+const DEFAULT_MODEL = "poolside/laguna-s-2.1:free";
 const DEFAULT_DAILY_LIMIT = 20;
 const MAX_DAILY_LIMIT = 200;
 const MODEL_PATTERN = /^[a-z0-9][a-z0-9._:-]*\/[a-z0-9][a-z0-9._:-]*$/i;
