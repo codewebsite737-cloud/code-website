@@ -8,15 +8,24 @@ import type { AiGenerationInput } from "./policy";
 const OPENROUTER_CHAT_URL =
   "https://openrouter.ai/api/v1/chat/completions";
 const MAX_RESPONSE_CHARACTERS = 1_200_000;
-const TOTAL_DEADLINE_MS = 75_000;
-const ATTEMPT_DEADLINE_MS = 70_000;
-const MAX_ATTEMPTS = 1;
-const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+const TOTAL_DEADLINE_MS = 74_000;
+const ATTEMPT_DEADLINE_MS = 34_000;
+const MAX_GENERATION_TOKENS = 3_200;
 const FREE_CODING_MODELS = [
+  "poolside/laguna-s-2.1:free",
+  "inclusionai/ling-3.0-flash:free",
   "openai/gpt-oss-20b:free",
-  "google/gemma-4-26b-a4b-it:free",
-  "nvidia/nemotron-nano-9b-v2:free",
 ] as const;
+const ALTERNATE_MODEL_ERROR_CODES = new Set([
+  "PROVIDER_EMPTY",
+  "PROVIDER_FAILURE",
+  "PROVIDER_NETWORK",
+  "PROVIDER_PROJECT",
+  "PROVIDER_RATE_LIMIT",
+  "PROVIDER_RESPONSE",
+  "PROVIDER_TIMEOUT",
+  "PROVIDER_UNAVAILABLE",
+]);
 
 type CompletionResponse = {
   raw: string;
@@ -84,50 +93,46 @@ export async function generateManagedProject({
   siteOrigin: string;
 }): Promise<ManagedProjectResult> {
   const deadline = Date.now() + TOTAL_DEADLINE_MS;
-  let completion: CompletionResponse | null = null;
+  const candidates = modelCandidates(model);
+  let lastError: AiProviderError | null = null;
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+  for (const [index, candidate] of candidates.entries()) {
     try {
-      completion = await requestCompletion({
+      const completion = await requestCompletion({
         apiKey,
+        candidate,
         deadline,
         input,
-        model,
         siteOrigin,
       });
+      return parseCompletion(completion, candidate);
     } catch (error) {
-      const canRetry =
-        error instanceof AiProviderError &&
-        error.retryable &&
-        attempt < MAX_ATTEMPTS &&
-        Date.now() + 400 < deadline;
-      if (!canRetry) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      continue;
+      if (!(error instanceof AiProviderError)) throw error;
+      lastError = error;
+      const canTryAnotherModel =
+        index < candidates.length - 1 &&
+        ALTERNATE_MODEL_ERROR_CODES.has(error.code) &&
+        Date.now() + 500 < deadline;
+      if (!canTryAnotherModel) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
-
-    if (
-      completion.response.ok ||
-      !RETRYABLE_STATUSES.has(completion.response.status) ||
-      attempt === MAX_ATTEMPTS
-    ) {
-      break;
-    }
-
-    const delayMs = retryDelay(completion.response);
-    if (Date.now() + delayMs >= deadline) break;
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
-  if (!completion) {
-    throw new AiProviderError(
+  throw (
+    lastError ??
+    new AiProviderError(
       "PROVIDER_UNAVAILABLE",
       503,
       "Cloud AI is temporarily unavailable.",
       true,
-    );
-  }
+    )
+  );
+}
 
+function parseCompletion(
+  completion: CompletionResponse,
+  requestedModel: string,
+): ManagedProjectResult {
   const { raw, response } = completion;
   let data: OpenRouterResponse;
   try {
@@ -168,7 +173,7 @@ export async function generateManagedProject({
   }
 
   return {
-    model: cleanProviderModel(data.model, model),
+    model: cleanProviderModel(data.model, requestedModel),
     project,
     provider: "openrouter",
     usage: {
@@ -182,15 +187,15 @@ export async function generateManagedProject({
 
 async function requestCompletion({
   apiKey,
+  candidate,
   deadline,
   input,
-  model,
   siteOrigin,
 }: {
   apiKey: string;
+  candidate: string;
   deadline: number;
   input: AiGenerationInput;
-  model: string;
   siteOrigin: string;
 }): Promise<CompletionResponse> {
   const remainingMs = deadline - Date.now();
@@ -214,24 +219,23 @@ async function requestCompletion({
         "X-OpenRouter-Title": "SkyCode AI Workspace",
       },
       body: JSON.stringify({
-        models: modelCandidates(model),
+        model: candidate,
         stream: false,
-        temperature: 0.25,
-        max_tokens: 4_200,
-        reasoning: {
-          effort: "low",
-          exclude: true,
-        },
+        temperature: 0.2,
+        max_tokens: MAX_GENERATION_TOKENS,
+        reasoning: candidate.startsWith("openai/gpt-oss")
+          ? { effort: "low", exclude: true }
+          : { enabled: false, exclude: true },
         provider: {
           allow_fallbacks: true,
-          require_parameters: true,
+          require_parameters: false,
           sort: "throughput",
         },
         messages: [
           {
             role: "system",
             content:
-              "You are SkyCode, a senior frontend engineer. Build or edit a complete, polished, accessible, responsive browser project. Return only the requested JSON object. Use semantic HTML, modern CSS, and browser JavaScript. The HTML file is body markup only. Do not reference external scripts, fonts, images, APIs, CDNs, forms, iframes, or network resources. Make every requested interaction work in app.js. Never include secrets. Keep the combined project concise enough for browser preview.",
+              'You are SkyCode, a senior frontend engineer. Build or edit a polished, accessible, responsive browser project. Return exactly one valid JSON object with this shape: {"name":"project-slug","summary":"short summary","files":{"index.html":"body markup","styles.css":"CSS","app.js":"browser JavaScript","package.json":"valid JSON string"}}. Do not use markdown fences or text outside the JSON. JSON-escape every file string correctly. Use semantic HTML, modern CSS, and browser JavaScript. The HTML file is body markup only. Do not reference external scripts, fonts, images, APIs, CDNs, forms, iframes, or network resources. Make requested interactions work in app.js. Never include secrets. Keep all four files concise and the combined generated file content below 12,000 characters.',
           },
           {
             role: "user",
@@ -242,39 +246,6 @@ async function requestCompletion({
             }),
           },
         ],
-        response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: "skycode_browser_project",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                name: { type: "string", maxLength: 42 },
-                summary: { type: "string", maxLength: 280 },
-                files: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    "index.html": { type: "string", maxLength: 80_000 },
-                    "styles.css": { type: "string", maxLength: 80_000 },
-                    "app.js": { type: "string", maxLength: 80_000 },
-                    "package.json": { type: "string", maxLength: 80_000 },
-                  },
-                  required: [
-                    "index.html",
-                    "styles.css",
-                    "app.js",
-                    "package.json",
-                  ],
-                },
-              },
-              required: ["name", "summary", "files"],
-            },
-          },
-        },
-        plugins: [{ id: "response-healing" }],
       }),
       signal: controller.signal,
     });
