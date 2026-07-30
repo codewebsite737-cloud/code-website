@@ -2123,7 +2123,7 @@ export default function Home() {
                       : "Select and edit one preview section"
                   }
                 >
-                  {sectionEditMode ? "Select: on" : "Select"}
+                  {sectionEditMode ? "Edit on" : "Edit"}
                 </button>
                 <button onClick={runProject} aria-label="Refresh preview"><Icon name="refresh" size={14} /></button>
               </div>
@@ -2174,12 +2174,6 @@ export default function Home() {
                 sandbox="allow-scripts"
                 referrerPolicy="no-referrer"
               />
-              {sectionEditMode && !selectedSection && (
-                <div className="section-edit-guide">
-                  <i />
-                  Hover or tap a section to edit it
-                </div>
-              )}
               {selectedSection && (
                 <aside
                   className={`section-inspector section-tab-${sectionInspectorTab}`}
@@ -2187,19 +2181,41 @@ export default function Home() {
                 >
                   <div className="section-inspector-head">
                     <div>
-                      <span>
-                        {selectedSection.path?.length
-                          ? selectedSection.path.join("  ›  ")
-                          : "SELECTED SECTION"}
-                      </span>
                       <strong>
                         {selectedSection.label}
                         <small>&lt;{selectedSection.tag}&gt;</small>
                       </strong>
                     </div>
                     <div>
-                      <button onClick={openSelectedSectionCode}>Open code</button>
                       <button
+                        className={`section-code-toggle${
+                          sectionInspectorTab === "code" ? " active" : ""
+                        }`}
+                        aria-label="Edit section HTML"
+                        onClick={() => setSectionInspectorTab("code")}
+                        title="Edit section HTML"
+                      >
+                        &lt;/&gt;
+                      </button>
+                      <details className="section-more-menu">
+                        <summary aria-label="More section actions" title="More section actions">
+                          •••
+                        </summary>
+                        <div>
+                          <button onClick={() => arrangeSelectedSection("move-up")}>↑ Move up</button>
+                          <button onClick={() => arrangeSelectedSection("move-down")}>↓ Move down</button>
+                          <button onClick={() => arrangeSelectedSection("duplicate")}>⧉ Duplicate</button>
+                          <button
+                            className="danger"
+                            onClick={() => arrangeSelectedSection("delete")}
+                          >
+                            × Delete
+                          </button>
+                          <button onClick={openSelectedSectionCode}>Open full code</button>
+                        </div>
+                      </details>
+                      <button
+                        className="section-inspector-close"
                         aria-label="Close section editor"
                         onClick={closeSectionInspector}
                       >
@@ -2208,21 +2224,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="section-quick-actions" aria-label="Section actions">
-                    <button onClick={() => arrangeSelectedSection("move-up")} title="Move up">↑ <span>Up</span></button>
-                    <button onClick={() => arrangeSelectedSection("move-down")} title="Move down">↓ <span>Down</span></button>
-                    <button onClick={() => arrangeSelectedSection("duplicate")} title="Duplicate">⧉ <span>Duplicate</span></button>
-                    <button
-                      className="danger"
-                      onClick={() => arrangeSelectedSection("delete")}
-                      title="Delete section"
-                    >
-                      × <span>Delete</span>
-                    </button>
-                  </div>
-
                   <div className="section-inspector-tabs" role="tablist" aria-label="Section editor">
-                    {(["content", "design", "ai", "code"] as SectionInspectorTab[]).map((tab) => (
+                    {(["content", "design", "ai"] as SectionInspectorTab[]).map((tab) => (
                       <button
                         key={tab}
                         role="tab"
@@ -2360,99 +2363,122 @@ export default function Home() {
                           </div>
                         </fieldset>
                         <fieldset>
-                          <legend>Text color</legend>
-                          <div className="section-color-options compact">
-                            {[
-                              ["", "Keep"],
-                              ["#171717", "Ink"],
-                              ["#ffffff", "White"],
-                              ["#6b7280", "Muted"],
-                            ].map(([color, label]) => (
+                          <legend>Alignment</legend>
+                          <div className="section-segmented-control">
+                            {["keep", "left", "center", "right"].map((option) => (
                               <button
-                                key={label}
-                                className={sectionDesignDraft.textColor === color ? "active" : ""}
+                                key={option}
+                                className={
+                                  sectionDesignDraft.alignment === option
+                                    ? "active"
+                                    : ""
+                                }
                                 onClick={() =>
                                   setSectionDesignDraft((current) => ({
                                     ...current,
-                                    textColor: color,
+                                    alignment: option as SectionDesignDraft["alignment"],
                                   }))
                                 }
                               >
-                                <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
-                                <span>{label}</span>
+                                {option}
                               </button>
                             ))}
                           </div>
                         </fieldset>
-                        <fieldset>
-                          <legend>Accent</legend>
-                          <div className="section-color-options compact">
+                        <details className="section-advanced-style">
+                          <summary>More style options</summary>
+                          <div>
+                            <fieldset>
+                              <legend>Text color</legend>
+                              <div className="section-color-options compact">
+                                {[
+                                  ["", "Keep"],
+                                  ["#171717", "Ink"],
+                                  ["#ffffff", "White"],
+                                  ["#6b7280", "Muted"],
+                                ].map(([color, label]) => (
+                                  <button
+                                    key={label}
+                                    className={sectionDesignDraft.textColor === color ? "active" : ""}
+                                    onClick={() =>
+                                      setSectionDesignDraft((current) => ({
+                                        ...current,
+                                        textColor: color,
+                                      }))
+                                    }
+                                  >
+                                    <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
+                                    <span>{label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </fieldset>
+                            <fieldset>
+                              <legend>Accent</legend>
+                              <div className="section-color-options compact">
+                                {[
+                                  ["", "Keep"],
+                                  ["#ff5a1f", "Orange"],
+                                  ["#8b5cf6", "Purple"],
+                                  ["#24b47e", "Green"],
+                                  ["#2797ff", "Blue"],
+                                ].map(([color, label]) => (
+                                  <button
+                                    key={label}
+                                    className={sectionDesignDraft.accent === color ? "active" : ""}
+                                    onClick={() =>
+                                      setSectionDesignDraft((current) => ({
+                                        ...current,
+                                        accent: color,
+                                      }))
+                                    }
+                                  >
+                                    <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
+                                    <span>{label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </fieldset>
                             {[
-                              ["", "Keep"],
-                              ["#ff5a1f", "Orange"],
-                              ["#8b5cf6", "Purple"],
-                              ["#24b47e", "Green"],
-                              ["#2797ff", "Blue"],
-                            ].map(([color, label]) => (
-                              <button
-                                key={label}
-                                className={sectionDesignDraft.accent === color ? "active" : ""}
-                                onClick={() =>
-                                  setSectionDesignDraft((current) => ({
-                                    ...current,
-                                    accent: color,
-                                  }))
-                                }
-                              >
-                                <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
-                                <span>{label}</span>
-                              </button>
+                              {
+                                key: "padding",
+                                label: "Vertical spacing",
+                                options: ["keep", "compact", "balanced", "spacious"],
+                              },
+                              {
+                                key: "radius",
+                                label: "Corners",
+                                options: ["keep", "none", "soft", "rounded", "pill"],
+                              },
+                            ].map((control) => (
+                              <fieldset key={control.key}>
+                                <legend>{control.label}</legend>
+                                <div className="section-segmented-control">
+                                  {control.options.map((option) => (
+                                    <button
+                                      key={option}
+                                      className={
+                                        sectionDesignDraft[
+                                          control.key as "padding" | "radius"
+                                        ] === option
+                                          ? "active"
+                                          : ""
+                                      }
+                                      onClick={() =>
+                                        setSectionDesignDraft((current) => ({
+                                          ...current,
+                                          [control.key]: option,
+                                        }))
+                                      }
+                                    >
+                                      {option}
+                                    </button>
+                                  ))}
+                                </div>
+                              </fieldset>
                             ))}
                           </div>
-                        </fieldset>
-                        {[
-                          {
-                            key: "alignment",
-                            label: "Alignment",
-                            options: ["keep", "left", "center", "right"],
-                          },
-                          {
-                            key: "padding",
-                            label: "Vertical spacing",
-                            options: ["keep", "compact", "balanced", "spacious"],
-                          },
-                          {
-                            key: "radius",
-                            label: "Corners",
-                            options: ["keep", "none", "soft", "rounded", "pill"],
-                          },
-                        ].map((control) => (
-                          <fieldset key={control.key}>
-                            <legend>{control.label}</legend>
-                            <div className="section-segmented-control">
-                              {control.options.map((option) => (
-                                <button
-                                  key={option}
-                                  className={
-                                    sectionDesignDraft[
-                                      control.key as "alignment" | "padding" | "radius"
-                                    ] === option
-                                      ? "active"
-                                      : ""
-                                  }
-                                  onClick={() =>
-                                    setSectionDesignDraft((current) => ({
-                                      ...current,
-                                      [control.key]: option,
-                                    }))
-                                  }
-                                >
-                                  {option}
-                                </button>
-                              ))}
-                            </div>
-                          </fieldset>
-                        ))}
+                        </details>
                         <button
                           className="section-primary-action"
                           disabled={sectionWorking}
@@ -2473,8 +2499,6 @@ export default function Home() {
                           {[
                             "Make it orange and rounded",
                             "Make it compact and centered",
-                            "Make it dark and larger",
-                            "Change the title to “Build faster”",
                           ].map((suggestion) => (
                             <button
                               key={suggestion}
@@ -2537,10 +2561,6 @@ export default function Home() {
                     )}
                   </div>
 
-                  <footer className="section-inspector-trust">
-                    <span>◆ Only this section changes</span>
-                    <span>Undo available</span>
-                  </footer>
                 </aside>
               )}
             </div>
