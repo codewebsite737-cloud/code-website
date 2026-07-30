@@ -4,9 +4,9 @@ import type {
   WorkspaceFiles,
 } from "../../workspace/project-generator";
 
-const MAX_AI_BODY_BYTES = 180_000;
+const MAX_AI_BODY_BYTES = 90_000;
 const MAX_PROMPT_CHARACTERS = 3_000;
-const MAX_CONTEXT_FILE_CHARACTERS = 30_000;
+const MAX_CONTEXT_FILE_CHARACTERS = 14_000;
 const REQUIRED_FILES: FileName[] = [
   "index.html",
   "styles.css",
