@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
   let ownerEmail = "";
-  let configuredModel = "openai/gpt-oss-20b:free";
+  let configuredModel = "poolside/laguna-s-2.1:free";
 
   try {
     const user = await getChatGPTUser();
