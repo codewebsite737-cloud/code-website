@@ -6566,3 +6566,58 @@ body:has(.workspace) {
     gap: 22px;
   }
 }
+
+/* Clear AI entry point
+ * The assistant already lives in the right workspace panel. This compact
+ * control keeps it discoverable without adding another floating surface.
+ */
+.ai-launch-button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 1px solid #343742;
+  border-radius: 9px;
+  background: #202229;
+  color: #eef0f4;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.ai-launch-button:hover {
+  border-color: #4a4e5b;
+  background: #292c34;
+}
+
+.ai-launch-button svg {
+  color: #8bd9ad;
+}
+
+.ai-launch-button > i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #52d688;
+  box-shadow: 0 0 0 3px #52d68818;
+}
+
+.ai-launch-button.cloud-ready {
+  border-color: #315541;
+  background: #17241c;
+}
+
+@media (max-width: 820px), (max-width: 1100px) and (pointer: coarse) {
+  .top-actions > .ai-launch-button {
+    min-width: 38px;
+    min-height: 34px;
+    display: inline-flex !important;
+    padding: 0 10px;
+  }
+
+  .top-actions > .ai-launch-button span {
+    display: none;
+  }
+}
