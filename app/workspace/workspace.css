@@ -6346,3 +6346,223 @@ body:has(.workspace) {
     font-size: 10px;
   }
 }
+
+/* Calm, progressive-disclosure visual editor */
+
+.preview-tabs .section-mode-label {
+  display: none;
+}
+
+.preview-actions button:disabled {
+  display: none;
+}
+
+.section-inspector {
+  width: min(380px, calc(100% - 24px));
+  grid-template-rows: auto auto minmax(0, 1fr);
+  border-color: #363943;
+  border-radius: 14px;
+  background: #121318f5;
+  box-shadow: 0 20px 56px #000b, inset 0 1px #ffffff0a;
+}
+
+.section-inspector-head {
+  min-height: 54px;
+  padding: 9px 10px 8px 13px;
+}
+
+.section-inspector-head > div:first-child {
+  display: flex;
+  align-items: center;
+}
+
+.section-inspector-head strong {
+  font-size: 13px;
+}
+
+.section-inspector-head > div:last-child {
+  position: relative;
+  gap: 3px;
+}
+
+.section-inspector-head .section-code-toggle,
+.section-inspector-head .section-inspector-close,
+.section-more-menu > summary {
+  width: 29px;
+  min-width: 29px;
+  height: 29px;
+  min-height: 29px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #9095a1;
+  font: 650 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  list-style: none;
+}
+
+.section-more-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.section-inspector-head .section-code-toggle:hover,
+.section-inspector-head .section-code-toggle.active,
+.section-inspector-head .section-inspector-close:hover,
+.section-more-menu > summary:hover {
+  background: #24262d;
+  color: #fff;
+}
+
+.section-more-menu {
+  position: relative;
+}
+
+.section-more-menu > div {
+  width: 164px;
+  position: absolute;
+  z-index: 5;
+  top: 34px;
+  right: 0;
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid #383b45;
+  border-radius: 10px;
+  background: #17181deF;
+  box-shadow: 0 16px 40px #000c;
+  backdrop-filter: blur(18px);
+}
+
+.section-more-menu > div button,
+.section-inspector-head .section-more-menu > div button:last-child {
+  width: 100%;
+  min-height: 31px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #c5c8d0;
+  font: 600 11px/1 Inter, ui-sans-serif, system-ui, sans-serif;
+  text-align: left;
+}
+
+.section-more-menu > div button:hover {
+  background: #262830;
+  color: #fff;
+}
+
+.section-more-menu > div button.danger {
+  color: #e89a95;
+}
+
+.section-inspector-tabs {
+  gap: 18px;
+  padding: 0 13px;
+}
+
+.section-inspector-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 0 1px;
+  font-size: 11px;
+}
+
+.section-content-editor,
+.section-design-editor,
+.section-ai-editor,
+.section-html-editor {
+  gap: 11px;
+  padding: 14px;
+}
+
+.section-tab-intro span {
+  display: none;
+}
+
+.section-tab-intro strong {
+  font-size: 12px;
+}
+
+.section-color-options button {
+  min-height: 45px;
+  border: 0;
+  background: transparent;
+}
+
+.section-color-options button:hover {
+  background: #1d1f25;
+}
+
+.section-color-options button.active {
+  border: 1px solid #ff6b3570;
+  background: #ff6b350c;
+}
+
+.section-advanced-style {
+  border-top: 1px solid #292b33;
+}
+
+.section-advanced-style > summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #aeb2bd;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+
+.section-advanced-style > summary::-webkit-details-marker {
+  display: none;
+}
+
+.section-advanced-style > summary::after {
+  content: "+";
+  color: #747985;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.section-advanced-style[open] > summary::after {
+  content: "−";
+}
+
+.section-advanced-style > div {
+  display: grid;
+  gap: 12px;
+  padding: 4px 0 2px;
+}
+
+.section-suggestion-list {
+  gap: 5px;
+}
+
+.section-suggestion-list button {
+  min-height: 27px;
+  padding: 0 8px;
+  border-color: #30333b;
+  background: transparent;
+}
+
+.section-primary-action {
+  min-height: 34px;
+  box-shadow: none;
+}
+
+@media (max-width: 620px), (pointer: coarse) and (max-width: 900px) {
+  .section-inspector {
+    width: 100%;
+  }
+
+  .section-inspector-tabs {
+    gap: 22px;
+  }
+}
