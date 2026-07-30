@@ -203,8 +203,13 @@ test("adds section editing only to the workspace preview, never to exports", () 
 
   assert.match(editorPreview, /data-skycode-section-index/);
   assert.match(editorPreview, /section-selected/);
+  assert.match(editorPreview, /sections-ready/);
+  assert.match(editorPreview, /select-section/);
+  assert.match(editorPreview, /section-action/);
+  assert.match(editorPreview, /skycode-section-toolbar/);
   assert.doesNotMatch(exportedDocument, /data-skycode-section-index/);
   assert.doesNotMatch(exportedDocument, /skycode-section-selected/);
+  assert.doesNotMatch(exportedDocument, /skycode-section-toolbar/);
 });
 
 test("keeps embedded closing tags from escaping the preview style or script", () => {
