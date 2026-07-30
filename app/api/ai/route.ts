@@ -182,6 +182,14 @@ export async function POST(request: Request) {
       );
     } catch (error) {
       if (error instanceof AiProviderError) {
+        console.warn("AI provider request failed", {
+          code: error.code,
+          durationMs: Date.now() - startedAt,
+          model: config.model,
+          requestId,
+          retryable: error.retryable,
+          status: error.status,
+        });
         await recordUsageSafely({
           durationMs: Date.now() - startedAt,
           errorCode: error.code,
