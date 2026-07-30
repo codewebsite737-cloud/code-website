@@ -433,6 +433,7 @@ export default function Home() {
   const [cloudConfigured, setCloudConfigured] = useState(false);
   const [cloudAuthenticated, setCloudAuthenticated] = useState(false);
   const [cloudConnecting, setCloudConnecting] = useState(false);
+  const [cloudModel, setCloudModel] = useState("");
   const [onboardingOpen, setOnboardingOpen] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<ProjectCategory | null>(null);
   const [buildPrompt, setBuildPrompt] = useState("");
@@ -611,12 +612,14 @@ export default function Home() {
         setCloudAuthenticated(status.authenticated);
         setCloudConfigured(status.configured);
         setCloudConnected(status.available);
+        setCloudModel(status.model ?? "");
         if (status.available) setAiMode("cloud");
       })
       .catch(() => {
         setCloudAuthenticated(false);
         setCloudConfigured(false);
         setCloudConnected(false);
+        setCloudModel("");
       });
   }, []);
 
@@ -1403,6 +1406,7 @@ export default function Home() {
       const status = await getManagedAiStatus();
       setCloudAuthenticated(status.authenticated);
       setCloudConfigured(status.configured);
+      setCloudModel(status.model ?? "");
 
       if (!status.authenticated) {
         if (!persistWorkspaceDraft()) {
@@ -2979,6 +2983,7 @@ export default function Home() {
         cloudConfigured={cloudConfigured}
         cloudAuthenticated={cloudAuthenticated}
         cloudConnecting={cloudConnecting}
+        cloudModel={cloudModel}
         aiWorking={aiWorking}
         onClose={() => setOnboardingOpen(false)}
         onSelectCategory={setSelectedCategory}
