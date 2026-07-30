@@ -611,6 +611,7 @@ export default function Home() {
         setCloudAuthenticated(status.authenticated);
         setCloudConfigured(status.configured);
         setCloudConnected(status.available);
+        if (status.available) setAiMode("cloud");
       })
       .catch(() => {
         setCloudAuthenticated(false);
@@ -1381,6 +1382,20 @@ export default function Home() {
     setMobilePanelOpen(false);
   }
 
+  function openAiAssistant() {
+    if (!selectedCategory) {
+      openBuildWizard();
+      return;
+    }
+    setOnboardingOpen(false);
+    setMobileView("ai");
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLTextAreaElement>(".prompt-box textarea")
+        ?.focus();
+    });
+  }
+
   async function connectCloudAi() {
     if (cloudConnecting) return;
     setCloudConnecting(true);
@@ -1697,6 +1712,19 @@ export default function Home() {
         </div>
 
         <div className="top-actions">
+          <button
+            className={`ai-launch-button${cloudConnected ? " cloud-ready" : ""}`}
+            onClick={openAiAssistant}
+            title={
+              cloudConnected
+                ? "Open Sky AI · Server Cloud ready"
+                : "Open Sky AI"
+            }
+          >
+            <Icon name="spark" size={15} />
+            <span>Sky AI</span>
+            {cloudConnected && <i aria-hidden="true" />}
+          </button>
           <div
             className="layout-version-switcher"
             aria-label="Workspace layout version"
@@ -1739,6 +1767,9 @@ export default function Home() {
             <summary aria-label="Open workspace actions">•••</summary>
             <div>
               <strong>Workspace</strong>
+              <button onClick={openAiAssistant}>
+                <Icon name="spark" size={15} /> Open Sky AI
+              </button>
               <button onClick={() => switchCanvas("preview")}>
                 <Icon name="layout" size={15} /> Live preview
               </button>
