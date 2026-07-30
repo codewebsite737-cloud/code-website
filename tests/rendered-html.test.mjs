@@ -235,7 +235,7 @@ test("reports managed AI as safely unavailable until its server key exists", asy
   assert.equal(response.status, 200);
   assert.equal(body.configured, false);
   assert.equal(body.available, false);
-  assert.equal(body.model, "openai/gpt-oss-20b:free");
+  assert.equal(body.model, "poolside/laguna-s-2.1:free");
   assert.match(response.headers.get("cache-control") ?? "", /no-store/i);
 });
 
@@ -315,4 +315,16 @@ test("validates the exact bounded context sent to managed AI", async () => {
     "package.json",
     "styles.css",
   ]);
+});
+
+
+test("keeps current free coding failover independent of structured output support", async () => {
+  const providerSource = await readFile("app/api/ai/provider.ts", "utf8");
+
+  assert.match(providerSource, /poolside\/laguna-s-2\.1:free/);
+  assert.match(providerSource, /inclusionai\/ling-3\.0-flash:free/);
+  assert.match(providerSource, /openai\/gpt-oss-20b:free/);
+  assert.match(providerSource, /for \(const \[index, candidate\] of candidates\.entries\(\)\)/);
+  assert.match(providerSource, /require_parameters:\s*false/);
+  assert.doesNotMatch(providerSource, /response_format:/);
 });
