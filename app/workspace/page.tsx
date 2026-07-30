@@ -32,11 +32,20 @@ import {
 import { FileIcon, Icon } from "./components/WorkspaceIcons";
 import { buildPreviewDocument } from "./preview-document";
 import {
+  deletePreviewSection,
+  duplicatePreviewSection,
+  emptySectionDesignDraft,
   extractMarkedSection,
   markPreviewSection,
+  movePreviewSection,
+  readSectionContent,
   replacePreviewSection,
   transformSectionLocally,
+  updateSectionContent,
+  updateSectionDesign,
   type PreviewSectionSelection,
+  type SectionContentDraft,
+  type SectionDesignDraft,
 } from "./section-editor";
 
 type ActivityPanel = "files" | "search" | "git" | "database";
@@ -44,6 +53,13 @@ type BottomPanel = "terminal" | "problems" | "logs";
 type MobileWorkspaceView = "ai" | "code" | "preview" | "files" | "tools";
 type WorkspaceCanvasMode = "preview" | "code";
 type WorkspaceLayoutVersion = "studio" | "classic";
+type PreviewDevice = "desktop" | "tablet" | "phone";
+type SectionInspectorTab = "content" | "design" | "ai" | "code";
+type PreviewSectionSummary = {
+  index: number;
+  label: string;
+  tag: string;
+};
 type ResizablePanel = "ai" | "preview" | "utility";
 type PanelSizes = {
   ai: number;
@@ -428,6 +444,18 @@ export default function Home() {
   const [sectionInstruction, setSectionInstruction] = useState("");
   const [sectionHtmlDraft, setSectionHtmlDraft] = useState("");
   const [sectionWorking, setSectionWorking] = useState(false);
+  const [sectionInspectorTab, setSectionInspectorTab] =
+    useState<SectionInspectorTab>("content");
+  const [sectionContentDraft, setSectionContentDraft] =
+    useState<SectionContentDraft | null>(null);
+  const [sectionDesignDraft, setSectionDesignDraft] =
+    useState<SectionDesignDraft>(emptySectionDesignDraft);
+  const [previewDevice, setPreviewDevice] =
+    useState<PreviewDevice>("desktop");
+  const [previewSections, setPreviewSections] =
+    useState<PreviewSectionSummary[]>([]);
+  const [sectionUndoStack, setSectionUndoStack] = useState<string[]>([]);
+  const [sectionRedoStack, setSectionRedoStack] = useState<string[]>([]);
   const [logs, setLogs] = useState([
     { kind: "muted", text: "SkyCode browser preview" },
     { kind: "good", text: "✓ Restricted preview ready" },
@@ -704,16 +732,97 @@ export default function Home() {
       if (event.source !== previewFrameRef.current?.contentWindow) return;
       if (!event.data || typeof event.data !== "object") return;
       const data = event.data as {
+        action?: string;
+        index?: number;
         source?: string;
         type?: string;
         section?: Partial<PreviewSectionSelection>;
+        sections?: Partial<PreviewSectionSummary>[];
       };
-      if (
-        data.source !== "skycode-preview" ||
-        data.type !== "section-selected"
-      ) {
+      if (data.source !== "skycode-preview") return;
+
+      if (data.type === "sections-ready" && Array.isArray(data.sections)) {
+        const safeSections = data.sections
+          .slice(0, 201)
+          .filter(
+            (section) =>
+              Number.isInteger(section.index) &&
+              typeof section.label === "string" &&
+              typeof section.tag === "string",
+          )
+          .map((section) => ({
+            index: Number(section.index),
+            label: String(section.label).slice(0, 80),
+            tag: String(section.tag).slice(0, 20),
+          }));
+        setPreviewSections(safeSections);
         return;
       }
+
+      if (data.type === "section-deselected") {
+        setSelectedSection(null);
+        setSectionContentDraft(null);
+        setSectionInstruction("");
+        setSectionHtmlDraft("");
+        return;
+      }
+
+      if (
+        data.type === "section-action" &&
+        Number.isInteger(data.index) &&
+        ["move-up", "move-down", "duplicate"].includes(data.action ?? "")
+      ) {
+        if (previewHasChanges) {
+          showToast("Run pending code changes before arranging sections.");
+          return;
+        }
+        try {
+          const index = Number(data.index);
+          const updatedIndex =
+            data.action === "duplicate"
+              ? duplicatePreviewSection(files["index.html"], index)
+              : movePreviewSection(
+                  files["index.html"],
+                  index,
+                  data.action === "move-up" ? "up" : "down",
+                );
+          const description =
+            data.action === "duplicate"
+              ? "Section duplicated"
+              : "Section moved";
+          const updatedFiles = { ...files, "index.html": updatedIndex };
+          setSectionUndoStack((current) => [
+            ...current.slice(-19),
+            files["index.html"],
+          ]);
+          setSectionRedoStack([]);
+          setFiles(updatedFiles);
+          setPreviewFiles(updatedFiles);
+          setActiveFile("index.html");
+          setSaveStatus("Unsaved");
+          setRunCount((count) => count + 1);
+          setSelectedSection(null);
+          setSectionContentDraft(null);
+          setSectionDesignDraft(emptySectionDesignDraft());
+          setSectionInstruction("");
+          setSectionHtmlDraft("");
+          setLogs((current) => [
+            ...current,
+            { kind: "good", text: `✓ ${description}` },
+            { kind: "muted", text: "Other preview sections were preserved" },
+          ]);
+          showToast(description);
+        } catch (error) {
+          showToast(
+            error instanceof Error
+              ? error.message
+              : "The section could not be arranged.",
+          );
+        }
+        return;
+      }
+
+      if (data.type !== "section-selected") return;
       if (previewHasChanges) {
         setToast("Run pending code changes before selecting a section.");
         window.setTimeout(() => setToast(""), 2200);
@@ -739,18 +848,29 @@ export default function Home() {
         label: section.label.slice(0, 80),
         tag: section.tag.slice(0, 20),
         html: section.html,
+        path: Array.isArray(section.path)
+          ? section.path
+              .filter((item): item is string => typeof item === "string")
+              .slice(0, 4)
+              .map((item) => item.slice(0, 54))
+          : [],
       };
       setSelectedSection(nextSection);
+      setSectionContentDraft(readSectionContent(nextSection.html));
+      setSectionDesignDraft(emptySectionDesignDraft());
+      setSectionInspectorTab("content");
       setSectionHtmlDraft(nextSection.html);
       setSectionInstruction("");
     }
 
     window.addEventListener("message", receivePreviewMessage);
     return () => window.removeEventListener("message", receivePreviewMessage);
-  }, [previewHasChanges]);
+  }, [files, previewHasChanges]);
 
   useEffect(() => {
     setSelectedSection(null);
+    setSectionContentDraft(null);
+    setSectionDesignDraft(emptySectionDesignDraft());
     setSectionInstruction("");
     setSectionHtmlDraft("");
   }, [previewFiles]);
@@ -776,47 +896,67 @@ export default function Home() {
     }, 650);
   }
 
-  function applySectionReplacement(
-    replacementMarkup: string,
-    source: "instant" | "cloud" | "manual",
+  function resetSectionInspectorState() {
+    setSelectedSection(null);
+    setSectionContentDraft(null);
+    setSectionDesignDraft(emptySectionDesignDraft());
+    setSectionInstruction("");
+    setSectionHtmlDraft("");
+  }
+
+  function commitSectionDocument(
+    updatedIndex: string,
+    description: string,
   ) {
-    if (!selectedSection) return;
-    const updatedIndex = replacePreviewSection(
-      files["index.html"],
-      selectedSection.index,
-      replacementMarkup,
-    );
     const updatedFiles: WorkspaceFiles = {
       ...files,
       "index.html": updatedIndex,
     };
-
+    setSectionUndoStack((current) => [
+      ...current.slice(-19),
+      files["index.html"],
+    ]);
+    setSectionRedoStack([]);
     setFiles(updatedFiles);
     setPreviewFiles(updatedFiles);
     setActiveFile("index.html");
     setSaveStatus("Unsaved");
     setRunCount((count) => count + 1);
-    setSelectedSection(null);
-    setSectionInstruction("");
-    setSectionHtmlDraft("");
+    resetSectionInspectorState();
     setLogs((current) => [
       ...current,
-      {
-        kind: "good",
-        text: `✓ ${source === "manual" ? "HTML applied to" : "Regenerated"} one preview section`,
-      },
-      { kind: "muted", text: "All other preview sections were preserved" },
+      { kind: "good", text: `✓ ${description}` },
+      { kind: "muted", text: "Other preview sections were preserved" },
     ]);
+    showToast(description);
+  }
+
+  function applySectionReplacement(
+    replacementMarkup: string,
+    source: "instant" | "cloud" | "manual",
+  ) {
+    if (!selectedSection) return;
+    const selectedLabel = selectedSection.label;
+    const updatedIndex = replacePreviewSection(
+      files["index.html"],
+      selectedSection.index,
+      replacementMarkup,
+    );
+    commitSectionDocument(
+      updatedIndex,
+      source === "manual"
+        ? "Selected section updated"
+        : "Selected section regenerated",
+    );
     setMessages((current) => [
       ...current,
       {
         role: "assistant",
-        text: `Updated only the selected ${selectedSection.label.toLowerCase()} section. Every other section was preserved.`,
+        text: `Updated only the selected ${selectedLabel.toLowerCase()} section. Every other section was preserved.`,
         changedCount: 1,
         engine: source === "cloud" ? "cloud" : "instant",
       },
     ]);
-    showToast("Only the selected section was updated");
   }
 
   function applySectionHtml() {
@@ -828,6 +968,142 @@ export default function Home() {
         error instanceof Error ? error.message : "Section HTML is not valid.",
       );
     }
+  }
+
+  function applySectionContentChanges() {
+    if (!selectedSection || !sectionContentDraft || sectionWorking) return;
+    try {
+      applySectionReplacement(
+        updateSectionContent(selectedSection.html, sectionContentDraft),
+        "manual",
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Section content could not be updated.",
+      );
+    }
+  }
+
+  function applySectionDesignChanges() {
+    if (!selectedSection || sectionWorking) return;
+    try {
+      applySectionReplacement(
+        updateSectionDesign(selectedSection.html, sectionDesignDraft),
+        "manual",
+      );
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "Section design could not be updated.",
+      );
+    }
+  }
+
+  function arrangeSelectedSection(
+    action: "move-up" | "move-down" | "duplicate" | "delete",
+  ) {
+    if (!selectedSection || sectionWorking) return;
+    if (
+      action === "delete" &&
+      !window.confirm(
+        `Delete the ${selectedSection.label} section? You can undo this action.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const updatedIndex =
+        action === "duplicate"
+          ? duplicatePreviewSection(
+              files["index.html"],
+              selectedSection.index,
+            )
+          : action === "delete"
+            ? deletePreviewSection(
+                files["index.html"],
+                selectedSection.index,
+              )
+            : movePreviewSection(
+                files["index.html"],
+                selectedSection.index,
+                action === "move-up" ? "up" : "down",
+              );
+      const descriptions = {
+        "move-up": "Section moved up",
+        "move-down": "Section moved down",
+        duplicate: "Section duplicated",
+        delete: "Section deleted",
+      };
+      commitSectionDocument(updatedIndex, descriptions[action]);
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "The section could not be arranged.",
+      );
+    }
+  }
+
+  function undoSectionChange() {
+    const previous = sectionUndoStack.at(-1);
+    if (!previous) {
+      showToast("No section change to undo.");
+      return;
+    }
+    const updatedFiles = { ...files, "index.html": previous };
+    setSectionUndoStack((current) => current.slice(0, -1));
+    setSectionRedoStack((current) => [
+      ...current.slice(-19),
+      files["index.html"],
+    ]);
+    setFiles(updatedFiles);
+    setPreviewFiles(updatedFiles);
+    setSaveStatus("Unsaved");
+    setRunCount((count) => count + 1);
+    resetSectionInspectorState();
+    setLogs((current) => [
+      ...current,
+      { kind: "good", text: "↶ Section change undone" },
+    ]);
+    showToast("Section change undone");
+  }
+
+  function redoSectionChange() {
+    const next = sectionRedoStack.at(-1);
+    if (!next) {
+      showToast("No section change to redo.");
+      return;
+    }
+    const updatedFiles = { ...files, "index.html": next };
+    setSectionRedoStack((current) => current.slice(0, -1));
+    setSectionUndoStack((current) => [
+      ...current.slice(-19),
+      files["index.html"],
+    ]);
+    setFiles(updatedFiles);
+    setPreviewFiles(updatedFiles);
+    setSaveStatus("Unsaved");
+    setRunCount((count) => count + 1);
+    resetSectionInspectorState();
+    setLogs((current) => [
+      ...current,
+      { kind: "good", text: "↷ Section change restored" },
+    ]);
+    showToast("Section change restored");
+  }
+
+  function selectPreviewSection(index: number) {
+    previewFrameRef.current?.contentWindow?.postMessage(
+      {
+        source: "skycode-workspace",
+        type: "select-section",
+        index,
+      },
+      "*",
+    );
   }
 
   async function regenerateSelectedSection() {
@@ -895,9 +1171,7 @@ export default function Home() {
   function toggleSectionEditing() {
     if (!sectionEditMode && previewHasChanges) runProject();
     setSectionEditMode((enabled) => !enabled);
-    setSelectedSection(null);
-    setSectionInstruction("");
-    setSectionHtmlDraft("");
+    resetSectionInspectorState();
   }
 
   function openSelectedSectionCode() {
@@ -907,9 +1181,7 @@ export default function Home() {
   }
 
   function closeSectionInspector() {
-    setSelectedSection(null);
-    setSectionInstruction("");
-    setSectionHtmlDraft("");
+    resetSectionInspectorState();
     previewFrameRef.current?.contentWindow?.postMessage(
       {
         source: "skycode-workspace",
@@ -1808,7 +2080,39 @@ export default function Home() {
                 <span className="active">Secure preview</span>
                 {sectionEditMode && <span className="section-mode-label">Section edit</span>}
               </div>
+              <div className="preview-device-switcher" aria-label="Preview size">
+                {(["desktop", "tablet", "phone"] as PreviewDevice[]).map(
+                  (device) => (
+                    <button
+                      key={device}
+                      className={previewDevice === device ? "active" : ""}
+                      aria-label={`${device} preview`}
+                      aria-pressed={previewDevice === device}
+                      onClick={() => setPreviewDevice(device)}
+                      title={`${device[0].toUpperCase()}${device.slice(1)} preview`}
+                    >
+                      {device === "desktop" ? "▰" : device === "tablet" ? "▯" : "▯"}
+                    </button>
+                  ),
+                )}
+              </div>
               <div className="preview-actions">
+                <button
+                  onClick={undoSectionChange}
+                  disabled={!sectionUndoStack.length}
+                  aria-label="Undo section change"
+                  title="Undo section change"
+                >
+                  ↶
+                </button>
+                <button
+                  onClick={redoSectionChange}
+                  disabled={!sectionRedoStack.length}
+                  aria-label="Redo section change"
+                  title="Redo section change"
+                >
+                  ↷
+                </button>
                 <button
                   className={`section-mode-toggle${sectionEditMode ? " active" : ""}`}
                   aria-pressed={sectionEditMode}
@@ -1830,18 +2134,38 @@ export default function Home() {
                   running ? " running" : previewHasChanges ? " pending" : ""
                 }`}
               />
-              <span>
-                {running
-                  ? "Updating preview…"
-                  : previewHasChanges
-                    ? "Changes ready — press Run"
-                    : sectionEditMode
-                      ? "Click a boxed section to edit only that section"
-                    : "Preview up to date"}
-              </span>
+              {sectionEditMode && previewSections.length ? (
+                <label className="section-navigator">
+                  <span>Jump to</span>
+                  <select
+                    aria-label="Jump to a page section"
+                    value={selectedSection?.index ?? ""}
+                    onChange={(event) =>
+                      selectPreviewSection(Number(event.target.value))
+                    }
+                  >
+                    <option value="" disabled>Choose section</option>
+                    {previewSections.map((section, index) => (
+                      <option key={`${section.index}-${section.label}`} value={section.index}>
+                        {index + 1}. {section.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <span>
+                  {running
+                    ? "Updating preview…"
+                    : previewHasChanges
+                      ? "Changes ready — press Run"
+                      : sectionEditMode
+                        ? "Click a boxed section to edit only that section"
+                        : "Preview up to date"}
+                </span>
+              )}
               <span className="preview-lock" aria-label="Network-restricted preview">◆</span>
             </div>
-            <div className="preview-canvas">
+            <div className="preview-canvas" data-preview-device={previewDevice}>
               <iframe
                 key={runCount}
                 ref={previewFrameRef}
@@ -1858,12 +2182,16 @@ export default function Home() {
               )}
               {selectedSection && (
                 <aside
-                  className="section-inspector"
+                  className={`section-inspector section-tab-${sectionInspectorTab}`}
                   aria-label={`Edit ${selectedSection.label} section`}
                 >
                   <div className="section-inspector-head">
                     <div>
-                      <span>SELECTED SECTION</span>
+                      <span>
+                        {selectedSection.path?.length
+                          ? selectedSection.path.join("  ›  ")
+                          : "SELECTED SECTION"}
+                      </span>
                       <strong>
                         {selectedSection.label}
                         <small>&lt;{selectedSection.tag}&gt;</small>
@@ -1879,47 +2207,340 @@ export default function Home() {
                       </button>
                     </div>
                   </div>
-                  <label className="section-instruction">
-                    <span>Change only this section</span>
-                    <textarea
-                      value={sectionInstruction}
-                      onChange={(event) =>
-                        setSectionInstruction(event.target.value)
-                      }
-                      maxLength={1200}
-                      placeholder={'Try: Make it orange and rounded, or change the title to “Build faster”.'}
-                    />
-                  </label>
-                  <div className="section-inspector-actions">
-                    <small>
-                      {aiMode === "cloud" && cloudConnected
-                        ? "Protected Cloud AI"
-                        : "Instant focused edit"}
-                    </small>
+
+                  <div className="section-quick-actions" aria-label="Section actions">
+                    <button onClick={() => arrangeSelectedSection("move-up")} title="Move up">↑ <span>Up</span></button>
+                    <button onClick={() => arrangeSelectedSection("move-down")} title="Move down">↓ <span>Down</span></button>
+                    <button onClick={() => arrangeSelectedSection("duplicate")} title="Duplicate">⧉ <span>Duplicate</span></button>
                     <button
-                      disabled={sectionWorking || !sectionInstruction.trim()}
-                      onClick={() => void regenerateSelectedSection()}
+                      className="danger"
+                      onClick={() => arrangeSelectedSection("delete")}
+                      title="Delete section"
                     >
-                      {sectionWorking ? "Updating…" : "Update this section"}
+                      × <span>Delete</span>
                     </button>
                   </div>
-                  <details className="section-html-editor">
-                    <summary>Edit section HTML directly</summary>
-                    <textarea
-                      aria-label={`${selectedSection.label} HTML`}
-                      spellCheck={false}
-                      value={sectionHtmlDraft}
-                      onChange={(event) =>
-                        setSectionHtmlDraft(event.target.value)
-                      }
-                    />
-                    <button
-                      disabled={sectionWorking}
-                      onClick={applySectionHtml}
-                    >
-                      Apply HTML to this section
-                    </button>
-                  </details>
+
+                  <div className="section-inspector-tabs" role="tablist" aria-label="Section editor">
+                    {(["content", "design", "ai", "code"] as SectionInspectorTab[]).map((tab) => (
+                      <button
+                        key={tab}
+                        role="tab"
+                        aria-selected={sectionInspectorTab === tab}
+                        className={sectionInspectorTab === tab ? "active" : ""}
+                        onClick={() => setSectionInspectorTab(tab)}
+                      >
+                        {tab === "ai" ? "AI edit" : `${tab[0].toUpperCase()}${tab.slice(1)}`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="section-inspector-body">
+                    {sectionInspectorTab === "content" && sectionContentDraft && (
+                      <div className="section-content-editor" role="tabpanel">
+                        <div className="section-tab-intro">
+                          <strong>Edit visible content</strong>
+                          <span>Simple fields keep the structure safe.</span>
+                        </div>
+                        {sectionContentDraft.hasHeading && (
+                          <label>
+                            <span>Heading</span>
+                            <input
+                              value={sectionContentDraft.heading}
+                              maxLength={180}
+                              onChange={(event) =>
+                                setSectionContentDraft((current) =>
+                                  current
+                                    ? { ...current, heading: event.target.value }
+                                    : current,
+                                )
+                              }
+                            />
+                          </label>
+                        )}
+                        {sectionContentDraft.hasBody && (
+                          <label>
+                            <span>Body text</span>
+                            <textarea
+                              value={sectionContentDraft.body}
+                              maxLength={900}
+                              onChange={(event) =>
+                                setSectionContentDraft((current) =>
+                                  current
+                                    ? { ...current, body: event.target.value }
+                                    : current,
+                                )
+                              }
+                            />
+                          </label>
+                        )}
+                        {sectionContentDraft.hasButton && (
+                          <div className="section-field-grid">
+                            <label>
+                              <span>Button label</span>
+                              <input
+                                value={sectionContentDraft.buttonLabel}
+                                maxLength={80}
+                                onChange={(event) =>
+                                  setSectionContentDraft((current) =>
+                                    current
+                                      ? { ...current, buttonLabel: event.target.value }
+                                      : current,
+                                  )
+                                }
+                              />
+                            </label>
+                            {sectionContentDraft.buttonSupportsLink && (
+                              <label>
+                                <span>Button link</span>
+                                <input
+                                  value={sectionContentDraft.buttonHref}
+                                  maxLength={400}
+                                  placeholder="#contact"
+                                  onChange={(event) =>
+                                    setSectionContentDraft((current) =>
+                                      current
+                                        ? { ...current, buttonHref: event.target.value }
+                                        : current,
+                                    )
+                                  }
+                                />
+                              </label>
+                            )}
+                          </div>
+                        )}
+                        {!sectionContentDraft.hasHeading &&
+                          !sectionContentDraft.hasBody &&
+                          !sectionContentDraft.hasButton && (
+                            <div className="section-empty-state">
+                              No standard text fields found. Use AI edit or Code for this section.
+                            </div>
+                          )}
+                        <button
+                          className="section-primary-action"
+                          disabled={sectionWorking}
+                          onClick={applySectionContentChanges}
+                        >
+                          Apply content
+                        </button>
+                      </div>
+                    )}
+
+                    {sectionInspectorTab === "design" && (
+                      <div className="section-design-editor" role="tabpanel">
+                        <div className="section-tab-intro">
+                          <strong>Style this section</strong>
+                          <span>Responsive choices—no CSS knowledge needed.</span>
+                        </div>
+                        <fieldset>
+                          <legend>Background</legend>
+                          <div className="section-color-options">
+                            {[
+                              ["", "Keep"],
+                              ["#fff7f1", "Cream"],
+                              ["#ff5a1f", "Orange"],
+                              ["#0b0c10", "Dark"],
+                              ["#eaf4ff", "Sky"],
+                            ].map(([color, label]) => (
+                              <button
+                                key={label}
+                                className={sectionDesignDraft.background === color ? "active" : ""}
+                                onClick={() =>
+                                  setSectionDesignDraft((current) => ({
+                                    ...current,
+                                    background: color,
+                                  }))
+                                }
+                                title={label}
+                              >
+                                <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </fieldset>
+                        <fieldset>
+                          <legend>Text color</legend>
+                          <div className="section-color-options compact">
+                            {[
+                              ["", "Keep"],
+                              ["#171717", "Ink"],
+                              ["#ffffff", "White"],
+                              ["#6b7280", "Muted"],
+                            ].map(([color, label]) => (
+                              <button
+                                key={label}
+                                className={sectionDesignDraft.textColor === color ? "active" : ""}
+                                onClick={() =>
+                                  setSectionDesignDraft((current) => ({
+                                    ...current,
+                                    textColor: color,
+                                  }))
+                                }
+                              >
+                                <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </fieldset>
+                        <fieldset>
+                          <legend>Accent</legend>
+                          <div className="section-color-options compact">
+                            {[
+                              ["", "Keep"],
+                              ["#ff5a1f", "Orange"],
+                              ["#8b5cf6", "Purple"],
+                              ["#24b47e", "Green"],
+                              ["#2797ff", "Blue"],
+                            ].map(([color, label]) => (
+                              <button
+                                key={label}
+                                className={sectionDesignDraft.accent === color ? "active" : ""}
+                                onClick={() =>
+                                  setSectionDesignDraft((current) => ({
+                                    ...current,
+                                    accent: color,
+                                  }))
+                                }
+                              >
+                                <i style={{ background: color || "linear-gradient(135deg,#fff 50%,#222 50%)" }} />
+                                <span>{label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </fieldset>
+                        {[
+                          {
+                            key: "alignment",
+                            label: "Alignment",
+                            options: ["keep", "left", "center", "right"],
+                          },
+                          {
+                            key: "padding",
+                            label: "Vertical spacing",
+                            options: ["keep", "compact", "balanced", "spacious"],
+                          },
+                          {
+                            key: "radius",
+                            label: "Corners",
+                            options: ["keep", "none", "soft", "rounded", "pill"],
+                          },
+                        ].map((control) => (
+                          <fieldset key={control.key}>
+                            <legend>{control.label}</legend>
+                            <div className="section-segmented-control">
+                              {control.options.map((option) => (
+                                <button
+                                  key={option}
+                                  className={
+                                    sectionDesignDraft[
+                                      control.key as "alignment" | "padding" | "radius"
+                                    ] === option
+                                      ? "active"
+                                      : ""
+                                  }
+                                  onClick={() =>
+                                    setSectionDesignDraft((current) => ({
+                                      ...current,
+                                      [control.key]: option,
+                                    }))
+                                  }
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </div>
+                          </fieldset>
+                        ))}
+                        <button
+                          className="section-primary-action"
+                          disabled={sectionWorking}
+                          onClick={applySectionDesignChanges}
+                        >
+                          Apply design
+                        </button>
+                      </div>
+                    )}
+
+                    {sectionInspectorTab === "ai" && (
+                      <div className="section-ai-editor" role="tabpanel">
+                        <div className="section-tab-intro">
+                          <strong>Describe the result</strong>
+                          <span>AI is locked to this selected section.</span>
+                        </div>
+                        <div className="section-suggestion-list">
+                          {[
+                            "Make it orange and rounded",
+                            "Make it compact and centered",
+                            "Make it dark and larger",
+                            "Change the title to “Build faster”",
+                          ].map((suggestion) => (
+                            <button
+                              key={suggestion}
+                              onClick={() => setSectionInstruction(suggestion)}
+                            >
+                              {suggestion}
+                            </button>
+                          ))}
+                        </div>
+                        <label className="section-instruction">
+                          <span>Change only this section</span>
+                          <textarea
+                            autoFocus
+                            value={sectionInstruction}
+                            onChange={(event) =>
+                              setSectionInstruction(event.target.value)
+                            }
+                            maxLength={1200}
+                            placeholder={'Try: Make it more compact, or change the title to “Build faster”.'}
+                          />
+                        </label>
+                        <div className="section-inspector-actions">
+                          <small>
+                            {aiMode === "cloud" && cloudConnected
+                              ? "Protected Cloud AI"
+                              : "Instant focused edit"}
+                          </small>
+                          <button
+                            disabled={sectionWorking || !sectionInstruction.trim()}
+                            onClick={() => void regenerateSelectedSection()}
+                          >
+                            {sectionWorking ? "Updating…" : "Update this section"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {sectionInspectorTab === "code" && (
+                      <div className="section-html-editor" role="tabpanel">
+                        <div className="section-tab-intro">
+                          <strong>Section HTML</strong>
+                          <span>Scripts, frames, and unsafe handlers are blocked.</span>
+                        </div>
+                        <textarea
+                          aria-label={`${selectedSection.label} HTML`}
+                          spellCheck={false}
+                          value={sectionHtmlDraft}
+                          onChange={(event) =>
+                            setSectionHtmlDraft(event.target.value)
+                          }
+                        />
+                        <button
+                          className="section-primary-action"
+                          disabled={sectionWorking}
+                          onClick={applySectionHtml}
+                        >
+                          Apply HTML
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <footer className="section-inspector-trust">
+                    <span>◆ Only this section changes</span>
+                    <span>Undo available</span>
+                  </footer>
                 </aside>
               )}
             </div>
