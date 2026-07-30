@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1785190475212,
+      "tag": "0000_first_bruce_banner",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1785195459211,
+      "tag": "0001_hesitant_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785198159863,
+      "tag": "0002_round_redwing",
+      "breakpoints": true
+    }
+  ]
+}
