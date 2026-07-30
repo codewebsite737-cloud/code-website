@@ -31,6 +31,13 @@ import {
 } from "./components/BuildWizard";
 import { FileIcon, Icon } from "./components/WorkspaceIcons";
 import { buildPreviewDocument } from "./preview-document";
+import {
+  extractMarkedSection,
+  markPreviewSection,
+  replacePreviewSection,
+  transformSectionLocally,
+  type PreviewSectionSelection,
+} from "./section-editor";
 
 type ActivityPanel = "files" | "search" | "git" | "database";
 type BottomPanel = "terminal" | "problems" | "logs";
@@ -415,6 +422,12 @@ export default function Home() {
   const [buildPrompt, setBuildPrompt] = useState("");
   const [projectBrief, setProjectBrief] = useState("");
   const [toast, setToast] = useState("");
+  const [sectionEditMode, setSectionEditMode] = useState(true);
+  const [selectedSection, setSelectedSection] =
+    useState<PreviewSectionSelection | null>(null);
+  const [sectionInstruction, setSectionInstruction] = useState("");
+  const [sectionHtmlDraft, setSectionHtmlDraft] = useState("");
+  const [sectionWorking, setSectionWorking] = useState(false);
   const [logs, setLogs] = useState([
     { kind: "muted", text: "SkyCode browser preview" },
     { kind: "good", text: "✓ Restricted preview ready" },
@@ -429,6 +442,7 @@ export default function Home() {
   ]);
   const importFileRef = useRef<HTMLInputElement>(null);
   const codeHighlightRef = useRef<HTMLPreElement>(null);
+  const previewFrameRef = useRef<HTMLIFrameElement>(null);
   const panelDragRef = useRef<{
     panel: ResizablePanel;
     pointerId: number;
@@ -464,8 +478,11 @@ export default function Home() {
     (file) => files[file.name] !== previewFiles[file.name],
   );
   const srcDoc = useMemo(
-    () => buildPreviewDocument(previewFiles),
-    [previewFiles],
+    () =>
+      buildPreviewDocument(previewFiles, {
+        sectionEditor: sectionEditMode,
+      }),
+    [previewFiles, sectionEditMode],
   );
   const workspaceProblems = useMemo(() => {
     const problems: {
@@ -682,6 +699,62 @@ export default function Home() {
     );
   }, [panelLayoutReady, panelSizes]);
 
+  useEffect(() => {
+    function receivePreviewMessage(event: MessageEvent<unknown>) {
+      if (event.source !== previewFrameRef.current?.contentWindow) return;
+      if (!event.data || typeof event.data !== "object") return;
+      const data = event.data as {
+        source?: string;
+        type?: string;
+        section?: Partial<PreviewSectionSelection>;
+      };
+      if (
+        data.source !== "skycode-preview" ||
+        data.type !== "section-selected"
+      ) {
+        return;
+      }
+      if (previewHasChanges) {
+        setToast("Run pending code changes before selecting a section.");
+        window.setTimeout(() => setToast(""), 2200);
+        return;
+      }
+
+      const section = data.section;
+      if (
+        !section ||
+        !Number.isInteger(section.index) ||
+        Number(section.index) < 0 ||
+        Number(section.index) > 200 ||
+        typeof section.label !== "string" ||
+        typeof section.tag !== "string" ||
+        typeof section.html !== "string" ||
+        section.html.length > 50_000
+      ) {
+        return;
+      }
+
+      const nextSection: PreviewSectionSelection = {
+        index: Number(section.index),
+        label: section.label.slice(0, 80),
+        tag: section.tag.slice(0, 20),
+        html: section.html,
+      };
+      setSelectedSection(nextSection);
+      setSectionHtmlDraft(nextSection.html);
+      setSectionInstruction("");
+    }
+
+    window.addEventListener("message", receivePreviewMessage);
+    return () => window.removeEventListener("message", receivePreviewMessage);
+  }, [previewHasChanges]);
+
+  useEffect(() => {
+    setSelectedSection(null);
+    setSectionInstruction("");
+    setSectionHtmlDraft("");
+  }, [previewFiles]);
+
   function runProject() {
     if (running) return;
     setCanvasMode("preview");
@@ -701,6 +774,149 @@ export default function Home() {
       ]);
       showToast("Preview updated");
     }, 650);
+  }
+
+  function applySectionReplacement(
+    replacementMarkup: string,
+    source: "instant" | "cloud" | "manual",
+  ) {
+    if (!selectedSection) return;
+    const updatedIndex = replacePreviewSection(
+      files["index.html"],
+      selectedSection.index,
+      replacementMarkup,
+    );
+    const updatedFiles: WorkspaceFiles = {
+      ...files,
+      "index.html": updatedIndex,
+    };
+
+    setFiles(updatedFiles);
+    setPreviewFiles(updatedFiles);
+    setActiveFile("index.html");
+    setSaveStatus("Unsaved");
+    setRunCount((count) => count + 1);
+    setSelectedSection(null);
+    setSectionInstruction("");
+    setSectionHtmlDraft("");
+    setLogs((current) => [
+      ...current,
+      {
+        kind: "good",
+        text: `✓ ${source === "manual" ? "HTML applied to" : "Regenerated"} one preview section`,
+      },
+      { kind: "muted", text: "All other preview sections were preserved" },
+    ]);
+    setMessages((current) => [
+      ...current,
+      {
+        role: "assistant",
+        text: `Updated only the selected ${selectedSection.label.toLowerCase()} section. Every other section was preserved.`,
+        changedCount: 1,
+        engine: source === "cloud" ? "cloud" : "instant",
+      },
+    ]);
+    showToast("Only the selected section was updated");
+  }
+
+  function applySectionHtml() {
+    if (!selectedSection || sectionWorking) return;
+    try {
+      applySectionReplacement(sectionHtmlDraft, "manual");
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Section HTML is not valid.",
+      );
+    }
+  }
+
+  async function regenerateSelectedSection() {
+    if (!selectedSection || sectionWorking) return;
+    const instruction = sectionInstruction.trim();
+    if (!instruction) {
+      showToast("Describe the change for this section first.");
+      return;
+    }
+    if (instruction.length > 1200) {
+      showToast("Section instructions are limited to 1,200 characters.");
+      return;
+    }
+
+    setSectionWorking(true);
+    setAiWorking(true);
+    setAiStatusIndex(0);
+    try {
+      let replacement: string;
+      let source: "instant" | "cloud" = "instant";
+
+      if (aiMode === "cloud" && cloudConnected) {
+        const markedFiles: WorkspaceFiles = {
+          ...files,
+          "index.html": markPreviewSection(
+            files["index.html"],
+            selectedSection.index,
+          ),
+        };
+        const scopedRequest = [
+          "Update ONLY the HTML element marked data-skycode-target=\"selected-section\".",
+          "Preserve that marker in the returned index.html.",
+          "Do not alter any content outside the marked element.",
+          "Keep styles for this change inline on elements inside the selected section.",
+          `Requested section change: ${instruction}`,
+        ].join("\n");
+        const generated = await generateCloudProject({
+          category: selectedCategory ?? "website",
+          request: scopedRequest,
+          files: markedFiles,
+        });
+        replacement = extractMarkedSection(generated.files["index.html"]);
+        source = "cloud";
+      } else {
+        await new Promise((resolve) => window.setTimeout(resolve, 500));
+        replacement = transformSectionLocally(
+          selectedSection.html,
+          instruction,
+        );
+      }
+
+      applySectionReplacement(replacement, source);
+    } catch (error) {
+      showToast(
+        error instanceof Error
+          ? error.message
+          : "The selected section could not be updated.",
+      );
+    } finally {
+      setSectionWorking(false);
+      setAiWorking(false);
+    }
+  }
+
+  function toggleSectionEditing() {
+    if (!sectionEditMode && previewHasChanges) runProject();
+    setSectionEditMode((enabled) => !enabled);
+    setSelectedSection(null);
+    setSectionInstruction("");
+    setSectionHtmlDraft("");
+  }
+
+  function openSelectedSectionCode() {
+    setActiveFile("index.html");
+    setCanvasMode("code");
+    setMobileView("code");
+  }
+
+  function closeSectionInspector() {
+    setSelectedSection(null);
+    setSectionInstruction("");
+    setSectionHtmlDraft("");
+    previewFrameRef.current?.contentWindow?.postMessage(
+      {
+        source: "skycode-workspace",
+        type: "clear-section-selection",
+      },
+      "*",
+    );
   }
 
   function showToast(message: string) {
@@ -1588,8 +1804,23 @@ export default function Home() {
         <aside className="right-column">
           <section className="preview-panel">
             <div className="preview-head">
-              <div className="preview-tabs"><span className="active">Secure preview</span></div>
+              <div className="preview-tabs">
+                <span className="active">Secure preview</span>
+                {sectionEditMode && <span className="section-mode-label">Section edit</span>}
+              </div>
               <div className="preview-actions">
+                <button
+                  className={`section-mode-toggle${sectionEditMode ? " active" : ""}`}
+                  aria-pressed={sectionEditMode}
+                  onClick={toggleSectionEditing}
+                  title={
+                    sectionEditMode
+                      ? "Turn off section selection"
+                      : "Select and edit one preview section"
+                  }
+                >
+                  {sectionEditMode ? "Select: on" : "Select"}
+                </button>
                 <button onClick={runProject} aria-label="Refresh preview"><Icon name="refresh" size={14} /></button>
               </div>
             </div>
@@ -1604,6 +1835,8 @@ export default function Home() {
                   ? "Updating preview…"
                   : previewHasChanges
                     ? "Changes ready — press Run"
+                    : sectionEditMode
+                      ? "Click a boxed section to edit only that section"
                     : "Preview up to date"}
               </span>
               <span className="preview-lock" aria-label="Network-restricted preview">◆</span>
@@ -1611,11 +1844,84 @@ export default function Home() {
             <div className="preview-canvas">
               <iframe
                 key={runCount}
+                ref={previewFrameRef}
                 title="Live project preview"
                 srcDoc={srcDoc}
                 sandbox="allow-scripts"
                 referrerPolicy="no-referrer"
               />
+              {sectionEditMode && !selectedSection && (
+                <div className="section-edit-guide">
+                  <i />
+                  Select any orange-outlined section
+                </div>
+              )}
+              {selectedSection && (
+                <aside
+                  className="section-inspector"
+                  aria-label={`Edit ${selectedSection.label} section`}
+                >
+                  <div className="section-inspector-head">
+                    <div>
+                      <span>SELECTED SECTION</span>
+                      <strong>
+                        {selectedSection.label}
+                        <small>&lt;{selectedSection.tag}&gt;</small>
+                      </strong>
+                    </div>
+                    <div>
+                      <button onClick={openSelectedSectionCode}>Open code</button>
+                      <button
+                        aria-label="Close section editor"
+                        onClick={closeSectionInspector}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                  <label className="section-instruction">
+                    <span>Change only this section</span>
+                    <textarea
+                      value={sectionInstruction}
+                      onChange={(event) =>
+                        setSectionInstruction(event.target.value)
+                      }
+                      maxLength={1200}
+                      placeholder={'Try: Make it orange and rounded, or change the title to “Build faster”.'}
+                    />
+                  </label>
+                  <div className="section-inspector-actions">
+                    <small>
+                      {aiMode === "cloud" && cloudConnected
+                        ? "Protected Cloud AI"
+                        : "Instant focused edit"}
+                    </small>
+                    <button
+                      disabled={sectionWorking || !sectionInstruction.trim()}
+                      onClick={() => void regenerateSelectedSection()}
+                    >
+                      {sectionWorking ? "Updating…" : "Update this section"}
+                    </button>
+                  </div>
+                  <details className="section-html-editor">
+                    <summary>Edit section HTML directly</summary>
+                    <textarea
+                      aria-label={`${selectedSection.label} HTML`}
+                      spellCheck={false}
+                      value={sectionHtmlDraft}
+                      onChange={(event) =>
+                        setSectionHtmlDraft(event.target.value)
+                      }
+                    />
+                    <button
+                      disabled={sectionWorking}
+                      onClick={applySectionHtml}
+                    >
+                      Apply HTML to this section
+                    </button>
+                  </details>
+                </aside>
+              )}
             </div>
           </section>
 
