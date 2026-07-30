@@ -3412,6 +3412,20 @@ body:has(.workspace) {
   line-height: 1.55;
 }
 
+.cloud-model-name {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin-top: 7px;
+  color: #b9a8ff;
+  font-size: var(--type-micro);
+  font-weight: 700;
+  letter-spacing: .01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cloud-privacy-note {
   color: #9297a4 !important;
   font-size: var(--type-micro) !important;
