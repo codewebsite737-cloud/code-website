@@ -234,12 +234,12 @@ export function buildPreviewDocument(
     ? `<style>
       .skycode-section-mode [data-skycode-section-index] {
         cursor: pointer !important;
-        outline: 1px dashed rgba(255, 107, 53, .72);
+        outline: 2px solid transparent;
         outline-offset: -2px;
         transition: outline-color .16s ease, box-shadow .16s ease;
       }
       .skycode-section-mode [data-skycode-section-index]:hover {
-        outline: 2px solid #ff6b35;
+        outline-color: rgba(255, 107, 53, .9);
         outline-offset: -2px;
         box-shadow: inset 0 0 0 1px rgba(255, 107, 53, .2);
       }
