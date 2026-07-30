@@ -2177,7 +2177,7 @@ export default function Home() {
               {sectionEditMode && !selectedSection && (
                 <div className="section-edit-guide">
                   <i />
-                  Select any orange-outlined section
+                  Hover or tap a section to edit it
                 </div>
               )}
               {selectedSection && (
