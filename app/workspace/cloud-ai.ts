@@ -7,6 +7,7 @@ import {
 } from "./project-generator";
 
 const MAX_RESPONSE_CHARACTERS = 1_200_000;
+const MAX_CONTEXT_FILE_CHARACTERS = 14_000;
 
 export const cloudStorageKeys = {
   draft: "skycode_workspace_draft",
@@ -74,7 +75,7 @@ export async function generateCloudProject({
 }): Promise<GeneratedProject> {
   const currentFiles = Object.fromEntries(
     (Object.entries(files) as [FileName, string][]).map(
-      ([name, content]) => [name, content.slice(0, 30_000)],
+      ([name, content]) => [name, compactContextFile(name, content)],
     ),
   ) as WorkspaceFiles;
   const { response, data } = await fetchJson<ManagedAiResponse>(
@@ -91,7 +92,7 @@ export async function generateCloudProject({
         prompt: request,
       }),
     },
-    85_000,
+    82_000,
   );
 
   if (!response.ok || !data.project) {
@@ -103,6 +104,22 @@ export async function generateCloudProject({
   }
 
   return validateCloudProject(data.project);
+}
+
+function compactContextFile(name: FileName, content: string) {
+  if (content.length <= MAX_CONTEXT_FILE_CHARACTERS) return content;
+
+  const marker =
+    name === "index.html"
+      ? "\n<!-- SkyCode omitted the unchanged middle for a faster AI request. -->\n"
+      : name === "package.json"
+        ? "\n"
+        : "\n/* SkyCode omitted the unchanged middle for a faster AI request. */\n";
+  const available = MAX_CONTEXT_FILE_CHARACTERS - marker.length;
+  const headLength = Math.ceil(available * 0.68);
+  return `${content.slice(0, headLength)}${marker}${content.slice(
+    content.length - (available - headLength),
+  )}`;
 }
 
 async function fetchJson<T>(
