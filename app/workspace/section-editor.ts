@@ -16,7 +16,30 @@ export type PreviewSectionSelection = {
   label: string;
   tag: string;
   html: string;
+  path?: string[];
 };
+
+export type SectionContentDraft = {
+  heading: string;
+  body: string;
+  buttonLabel: string;
+  buttonHref: string;
+  hasHeading: boolean;
+  hasBody: boolean;
+  hasButton: boolean;
+  buttonSupportsLink: boolean;
+};
+
+export type SectionDesignDraft = {
+  accent: string;
+  alignment: "keep" | "left" | "center" | "right";
+  background: string;
+  padding: "keep" | "compact" | "balanced" | "spacious";
+  radius: "keep" | "none" | "soft" | "rounded" | "pill";
+  textColor: string;
+};
+
+export type SectionMoveDirection = "up" | "down";
 
 const forbiddenSectionElements =
   "script,style,link,iframe,object,embed,base,meta";
@@ -32,6 +55,16 @@ function sectionCandidates(document: Document) {
   return Array.from(
     document.body.querySelectorAll<HTMLElement>(PREVIEW_SECTION_SELECTOR),
   );
+}
+
+function selectedSectionOrThrow(document: Document, sectionIndex: number) {
+  const selected = sectionCandidates(document)[sectionIndex];
+  if (!selected) {
+    throw new Error(
+      "This section is no longer available. Refresh the preview and select it again.",
+    );
+  }
+  return selected;
 }
 
 function parseSectionRoot(markup: string) {
@@ -82,12 +115,7 @@ export function replacePreviewSection(
   replacementMarkup: string,
 ) {
   const sourceDocument = parseBody(source);
-  const selected = sectionCandidates(sourceDocument)[sectionIndex];
-  if (!selected) {
-    throw new Error(
-      "This section is no longer available. Refresh the preview and select it again.",
-    );
-  }
+  const selected = selectedSectionOrThrow(sourceDocument, sectionIndex);
 
   const replacement = parseSectionRoot(replacementMarkup);
   selected.replaceWith(sourceDocument.importNode(replacement, true));
@@ -99,12 +127,7 @@ export function markPreviewSection(
   sectionIndex: number,
 ) {
   const sourceDocument = parseBody(source);
-  const selected = sectionCandidates(sourceDocument)[sectionIndex];
-  if (!selected) {
-    throw new Error(
-      "This section is no longer available. Refresh the preview and select it again.",
-    );
-  }
+  const selected = selectedSectionOrThrow(sourceDocument, sectionIndex);
   selected.setAttribute(SECTION_TARGET_ATTRIBUTE, "selected-section");
   return sourceDocument.body.innerHTML.trim();
 }
@@ -119,6 +142,145 @@ export function extractMarkedSection(source: string) {
   }
   selected.removeAttribute(SECTION_TARGET_ATTRIBUTE);
   return parseSectionRoot(selected.outerHTML).outerHTML;
+}
+
+export function readSectionContent(
+  sectionMarkup: string,
+): SectionContentDraft {
+  const root = parseSectionRoot(sectionMarkup);
+  const heading = root.querySelector<HTMLElement>("h1, h2, h3");
+  const body = root.querySelector<HTMLElement>("p");
+  const button = root.querySelector<HTMLElement>("button, a");
+  const buttonSupportsLink = button?.tagName === "A";
+
+  return {
+    heading: heading?.textContent?.trim() ?? "",
+    body: body?.textContent?.trim() ?? "",
+    buttonLabel: button?.textContent?.trim() ?? "",
+    buttonHref:
+      buttonSupportsLink && button
+        ? button.getAttribute("href") ?? ""
+        : "",
+    hasHeading: Boolean(heading),
+    hasBody: Boolean(body),
+    hasButton: Boolean(button),
+    buttonSupportsLink,
+  };
+}
+
+export function updateSectionContent(
+  sectionMarkup: string,
+  content: SectionContentDraft,
+) {
+  const root = parseSectionRoot(sectionMarkup);
+  const heading = root.querySelector<HTMLElement>("h1, h2, h3");
+  const body = root.querySelector<HTMLElement>("p");
+  const button = root.querySelector<HTMLElement>("button, a");
+
+  if (heading && content.hasHeading) heading.textContent = content.heading;
+  if (body && content.hasBody) body.textContent = content.body;
+  if (button && content.hasButton) {
+    button.textContent = content.buttonLabel;
+    if (button.tagName === "A") {
+      const href = content.buttonHref.trim();
+      if (href) button.setAttribute("href", href);
+      else button.removeAttribute("href");
+    }
+  }
+
+  return parseSectionRoot(root.outerHTML).outerHTML;
+}
+
+export function emptySectionDesignDraft(): SectionDesignDraft {
+  return {
+    accent: "",
+    alignment: "keep",
+    background: "",
+    padding: "keep",
+    radius: "keep",
+    textColor: "",
+  };
+}
+
+export function updateSectionDesign(
+  sectionMarkup: string,
+  design: SectionDesignDraft,
+) {
+  const root = parseSectionRoot(sectionMarkup);
+
+  if (design.background) root.style.background = design.background;
+  if (design.textColor) root.style.color = design.textColor;
+  if (design.accent) {
+    root.style.setProperty("--accent", design.accent);
+    root.style.setProperty("--primary", design.accent);
+  }
+  if (design.alignment !== "keep") {
+    root.style.textAlign = design.alignment;
+  }
+
+  const paddingValues = {
+    compact: "clamp(24px, 5vw, 52px)",
+    balanced: "clamp(48px, 8vw, 96px)",
+    spacious: "clamp(72px, 12vw, 152px)",
+  } as const;
+  if (design.padding !== "keep") {
+    root.style.paddingBlock = paddingValues[design.padding];
+  }
+
+  const radiusValues = {
+    none: "0",
+    soft: "16px",
+    rounded: "32px",
+    pill: "64px",
+  } as const;
+  if (design.radius !== "keep") {
+    root.style.borderRadius = radiusValues[design.radius];
+    if (design.radius !== "none") root.style.overflow = "hidden";
+  }
+
+  return parseSectionRoot(root.outerHTML).outerHTML;
+}
+
+export function duplicatePreviewSection(source: string, sectionIndex: number) {
+  const sourceDocument = parseBody(source);
+  const selected = selectedSectionOrThrow(sourceDocument, sectionIndex);
+  selected.after(selected.cloneNode(true));
+  return sourceDocument.body.innerHTML.trim();
+}
+
+export function movePreviewSection(
+  source: string,
+  sectionIndex: number,
+  direction: SectionMoveDirection,
+) {
+  const sourceDocument = parseBody(source);
+  const selected = selectedSectionOrThrow(sourceDocument, sectionIndex);
+  const siblings = sectionCandidates(sourceDocument).filter(
+    (candidate) => candidate.parentElement === selected.parentElement,
+  );
+  const siblingIndex = siblings.indexOf(selected);
+  const target =
+    direction === "up"
+      ? siblings[siblingIndex - 1]
+      : siblings[siblingIndex + 1];
+  if (!target) {
+    throw new Error(
+      direction === "up"
+        ? "This section is already first in its group."
+        : "This section is already last in its group.",
+    );
+  }
+
+  if (direction === "up") target.before(selected);
+  else target.after(selected);
+  return sourceDocument.body.innerHTML.trim();
+}
+
+export function deletePreviewSection(source: string, sectionIndex: number) {
+  const sourceDocument = parseBody(source);
+  const selected = selectedSectionOrThrow(sourceDocument, sectionIndex);
+  selected.remove();
+  return sourceDocument.body.innerHTML.trim();
 }
 
 const colorInstructions: Array<[RegExp, string]> = [
