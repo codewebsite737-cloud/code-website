@@ -8,9 +8,15 @@ import type { AiGenerationInput } from "./policy";
 const OPENROUTER_CHAT_URL =
   "https://openrouter.ai/api/v1/chat/completions";
 const MAX_RESPONSE_CHARACTERS = 1_200_000;
-const TOTAL_DEADLINE_MS = 45_000;
+const TOTAL_DEADLINE_MS = 80_000;
+const ATTEMPT_DEADLINE_MS = 48_000;
 const MAX_ATTEMPTS = 2;
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+
+type CompletionResponse = {
+  raw: string;
+  response: Response;
+};
 
 type OpenRouterResponse = {
   model?: string;
@@ -73,31 +79,42 @@ export async function generateManagedProject({
   siteOrigin: string;
 }): Promise<ManagedProjectResult> {
   const deadline = Date.now() + TOTAL_DEADLINE_MS;
-  let response: Response | null = null;
+  let completion: CompletionResponse | null = null;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
-    response = await requestCompletion({
-      apiKey,
-      deadline,
-      input,
-      model,
-      siteOrigin,
-    });
+    try {
+      completion = await requestCompletion({
+        apiKey,
+        deadline,
+        input,
+        model,
+        siteOrigin,
+      });
+    } catch (error) {
+      const canRetry =
+        error instanceof AiProviderError &&
+        error.retryable &&
+        attempt < MAX_ATTEMPTS &&
+        Date.now() + 400 < deadline;
+      if (!canRetry) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      continue;
+    }
 
     if (
-      response.ok ||
-      !RETRYABLE_STATUSES.has(response.status) ||
+      completion.response.ok ||
+      !RETRYABLE_STATUSES.has(completion.response.status) ||
       attempt === MAX_ATTEMPTS
     ) {
       break;
     }
 
-    const delayMs = retryDelay(response);
+    const delayMs = retryDelay(completion.response);
     if (Date.now() + delayMs >= deadline) break;
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
-  if (!response) {
+  if (!completion) {
     throw new AiProviderError(
       "PROVIDER_UNAVAILABLE",
       503,
@@ -106,7 +123,7 @@ export async function generateManagedProject({
     );
   }
 
-  const raw = await readBoundedResponse(response);
+  const { raw, response } = completion;
   let data: OpenRouterResponse;
   try {
     data = JSON.parse(raw) as OpenRouterResponse;
@@ -170,7 +187,7 @@ async function requestCompletion({
   input: AiGenerationInput;
   model: string;
   siteOrigin: string;
-}) {
+}): Promise<CompletionResponse> {
   const remainingMs = deadline - Date.now();
   if (remainingMs <= 0) {
     throw timeoutError();
@@ -179,11 +196,11 @@ async function requestCompletion({
   const controller = new AbortController();
   const timer = setTimeout(
     () => controller.abort(),
-    Math.min(30_000, remainingMs),
+    Math.min(ATTEMPT_DEADLINE_MS, remainingMs),
   );
 
   try {
-    return await fetch(OPENROUTER_CHAT_URL, {
+    const response = await fetch(OPENROUTER_CHAT_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -193,8 +210,14 @@ async function requestCompletion({
       },
       body: JSON.stringify({
         model,
+        stream: false,
         temperature: 0.25,
-        max_tokens: 9_000,
+        max_tokens: 5_500,
+        provider: {
+          allow_fallbacks: true,
+          require_parameters: true,
+          sort: "throughput",
+        },
         messages: [
           {
             role: "system",
@@ -246,6 +269,8 @@ async function requestCompletion({
       }),
       signal: controller.signal,
     });
+    const raw = await readBoundedResponse(response);
+    return { raw, response };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
       throw timeoutError();
