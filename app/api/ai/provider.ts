@@ -8,10 +8,15 @@ import type { AiGenerationInput } from "./policy";
 const OPENROUTER_CHAT_URL =
   "https://openrouter.ai/api/v1/chat/completions";
 const MAX_RESPONSE_CHARACTERS = 1_200_000;
-const TOTAL_DEADLINE_MS = 80_000;
-const ATTEMPT_DEADLINE_MS = 48_000;
-const MAX_ATTEMPTS = 2;
+const TOTAL_DEADLINE_MS = 75_000;
+const ATTEMPT_DEADLINE_MS = 70_000;
+const MAX_ATTEMPTS = 1;
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
+const FREE_CODING_MODELS = [
+  "openai/gpt-oss-20b:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-nano-9b-v2:free",
+] as const;
 
 type CompletionResponse = {
   raw: string;
@@ -209,10 +214,14 @@ async function requestCompletion({
         "X-OpenRouter-Title": "SkyCode AI Workspace",
       },
       body: JSON.stringify({
-        model,
+        models: modelCandidates(model),
         stream: false,
         temperature: 0.25,
-        max_tokens: 5_500,
+        max_tokens: 4_200,
+        reasoning: {
+          effort: "low",
+          exclude: true,
+        },
         provider: {
           allow_fallbacks: true,
           require_parameters: true,
@@ -365,4 +374,18 @@ function cleanProviderModel(value: unknown, fallback: string) {
   return typeof value === "string" && value.length <= 160
     ? value
     : fallback;
+}
+
+function modelCandidates(model: string) {
+  const usesFreePool =
+    model === "openrouter/free" ||
+    (FREE_CODING_MODELS as readonly string[]).includes(model);
+  if (!usesFreePool) return [model];
+
+  const preferred =
+    model === "openrouter/free" ? FREE_CODING_MODELS[0] : model;
+  return [
+    preferred,
+    ...FREE_CODING_MODELS.filter((candidate) => candidate !== preferred),
+  ];
 }
