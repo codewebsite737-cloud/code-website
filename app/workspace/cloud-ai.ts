@@ -91,7 +91,7 @@ export async function generateCloudProject({
         prompt: request,
       }),
     },
-    55_000,
+    90_000,
   );
 
   if (!response.ok || !data.project) {
