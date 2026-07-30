@@ -193,9 +193,11 @@ export function BuildWizard({
                   </b>
                   {cloudConnected && cloudModel && (
                     <small className="cloud-model-name">
-                      {cloudModel === "openai/gpt-oss-20b:free"
-                        ? "OpenAI · gpt-oss-20b · Free"
-                        : cloudModel}
+                      {cloudModel === "poolside/laguna-s-2.1:free"
+                        ? "Poolside · Laguna S 2.1 · Free"
+                        : cloudModel === "openai/gpt-oss-20b:free"
+                          ? "OpenAI · gpt-oss-20b · Free"
+                          : cloudModel}
                     </small>
                   )}
                   <p>
