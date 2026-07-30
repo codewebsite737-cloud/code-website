@@ -235,7 +235,7 @@ test("reports managed AI as safely unavailable until its server key exists", asy
   assert.equal(response.status, 200);
   assert.equal(body.configured, false);
   assert.equal(body.available, false);
-  assert.equal(body.model, "openrouter/free");
+  assert.equal(body.model, "openai/gpt-oss-20b:free");
   assert.match(response.headers.get("cache-control") ?? "", /no-store/i);
 });
 
