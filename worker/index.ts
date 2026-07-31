@@ -58,6 +58,7 @@ const worker = {
         );
       }
 
+      const images = env.IMAGES;
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       const imageResponse = await handleImageOptimization(
         request,
@@ -65,7 +66,7 @@ const worker = {
           fetchAsset: (path) =>
             env.ASSETS.fetch(new Request(new URL(path, request.url))),
           transformImage: async (body, { width, format, quality }) => {
-            const result = await env.IMAGES
+            const result = await images
               .input(body)
               .transform(width > 0 ? { width } : {})
               .output({ format, quality });
