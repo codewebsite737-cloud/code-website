@@ -1,0 +1,89 @@
+name: Apply feature refresh
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  apply:
+    if: contains(github.event.head_commit.message, '[run-feature-refresh]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/workspace-home-seo-refresh
+          fetch-depth: 0
+      - name: Apply embedded product refresh
+        id: refresh
+        run: |
+          set -o pipefail
+          python <<'PY' 2>&1 | tee /tmp/refresh.log
+          from pathlib import Path
+          source = Path('.github/workflows/apply-workspace-home-refresh.yml').read_text()
+          marker = "          python <<'PY'\n"
+          end_marker = "\n          PY\n"
+          script = source.split(marker, 1)[1].split(end_marker, 1)[0]
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line
+              for line in script.splitlines()
+          )
+          script = script.replace(
+              '''def replace_once(text: str, old: str, new: str, label: str) -> str:
+    if old not in text:
+        raise SystemExit(f"Missing expected block: {label}")
+    return text.replace(old, new, 1)''',
+              '''def replace_once(text: str, old: str, new: str, label: str) -> str:
+    if old in text:
+        return text.replace(old, new, 1)
+    if label == "silent autosave authentication":
+        needle = "        const returnTo = `${window.location.pathname}${window.location.search}`;"
+        if needle in text:
+            return text.replace(needle, "        if (silent) return;\\n" + needle, 1)
+    if label == "silent autosave feedback":
+        saved = '      showToast("Project saved securely");'
+        failed = '      showToast(error instanceof Error ? error.message : "Project could not be saved.");'
+        if saved in text and failed in text:
+            text = text.replace(saved, '      if (!silent) showToast("Project synced securely");', 1)
+            return text.replace(
+                failed,
+                '      if (!silent) {\\n        showToast(error instanceof Error ? error.message : "Project could not be saved.");\\n      }',
+                1,
+            )
+    raise SystemExit(f"Missing expected block: {label}")''',
+          )
+          script = script.replace(
+              'workspace = replace_once(workspace, old_persist, new_persist, "persistent draft helper")',
+              '''persist_pattern = re.compile(
+              r"  function persistWorkspaceDraft\\(\\) \\{.*?\\n  async function saveProject\\(\\) \\{",
+              re.S,
+          )
+          workspace, count = persist_pattern.subn(new_persist, workspace, count=1)
+          if count != 1:
+              raise SystemExit("Could not replace persistent draft helper")''',
+          )
+          exec(compile(script, 'workspace-refresh.py', 'exec'))
+          PY
+          rm -f .github/workflows/apply-workspace-home-refresh.yml
+          rm -f .github/workflows/apply-refresh-from-pr.yml
+          rm -f .github/workflows/apply-refresh-on-push.yml
+          rm -f .github/workflows/.refresh-trigger
+      - name: Commit refreshed feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refresh workspace persistence, homepage, and SEO"
+          git push origin HEAD:feature/workspace-home-seo-refresh
+      - name: Report refresh result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          LOG=$(tail -n 25 /tmp/refresh.log 2>/dev/null || echo "No refresh log was produced.")
+          gh issue comment 13 --repo "$GITHUB_REPOSITORY" --body "Feature refresh finished with **$RESULT** for \`$GITHUB_SHA\`.\n\n\`\`\`text\n$LOG\n\`\`\`"
