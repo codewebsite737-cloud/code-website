@@ -2083,29 +2083,31 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="terminal-panel">
-            <div className="terminal-head">
-              <div>
-                <span className="terminal-section-label">ACTIVITY</span>
+          {canvasMode === "code" && (
+            <div className="terminal-panel">
+              <div className="terminal-head">
+                <div>
+                  <span className="terminal-section-label">ACTIVITY</span>
+                </div>
+                <div>
+                  <span>browser sandbox</span>
+                  <button
+                    aria-label="Clear activity"
+                    onClick={() => setLogs([])}
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
-              <div>
-                <span>browser sandbox</span>
-                <button
-                  aria-label="Clear activity"
-                  onClick={() => setLogs([])}
-                >
-                  Clear
-                </button>
+              <div className="terminal-body">
+                {logs.length ? (
+                  logs.slice(-5).map((log, index) => <div key={`${log.text}-${index}`} className={log.kind}>{log.text}</div>)
+                ) : (
+                  <div className="muted">Activity cleared. Run the preview to create a new entry.</div>
+                )}
               </div>
             </div>
-            <div className="terminal-body">
-              {logs.length ? (
-                logs.slice(-5).map((log, index) => <div key={`${log.text}-${index}`} className={log.kind}>{log.text}</div>)
-              ) : (
-                <div className="muted">Activity cleared. Run the preview to create a new entry.</div>
-              )}
-            </div>
-          </div>
+          )}
         </section>
 
         <aside className="right-column">
