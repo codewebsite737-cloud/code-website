@@ -2,6 +2,9 @@
   command = "npx vite build"
   publish = "dist/client"
 
+[build.environment]
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
