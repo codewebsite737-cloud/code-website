@@ -1,9 +1,6 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
-
-const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
@@ -21,8 +18,17 @@ const cloudflareWorkerConfig = {
     binding: "ASSETS",
     run_worker_first: true,
   },
-  d1_databases: [],
+  d1_databases: [
+    {
+      binding: "DB",
+      migrations_dir: "drizzle",
+    },
+  ],
   r2_buckets: [],
+  vars: {
+    AI_DAILY_LIMIT: "20",
+    OPENROUTER_MODEL: "openai/gpt-oss-20b:free",
+  },
 };
 
 export default defineConfig(async () => {
