@@ -9,22 +9,6 @@ export function getDb() {
   return drizzle(getD1Binding(), { schema });
 }
 
-const createMockD1 = (): D1Database => ({
-  prepare: () => ({
-    bind: () => ({
-      first: async () => ({ healthy: 1 }),
-      all: async () => ({ results: [{ healthy: 1 }], success: true, meta: { duration: 0 } }),
-      run: async () => ({ success: true, meta: { duration: 0 } }),
-    }),
-    first: async () => ({ healthy: 1 }),
-    all: async () => ({ results: [{ healthy: 1 }], success: true, meta: { duration: 0 } }),
-    run: async () => ({ success: true, meta: { duration: 0 } }),
-  }),
-  exec: async () => ({ count: 0, duration: 0 }),
-  batch: async () => [],
-  dump: async () => new ArrayBuffer(0),
-} as unknown as D1Database);
-
 export function getD1Binding(): D1Database {
   const binding = globalThis.__SKYCODE_D1__;
   if (!binding) {
