@@ -1,0 +1,1311 @@
+name: Apply workspace and homepage refresh
+
+on:
+  push:
+    branches:
+      - feature/workspace-home-seo-refresh
+
+permissions:
+  contents: write
+
+jobs:
+  apply-refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/workspace-home-seo-refresh
+          fetch-depth: 0
+
+      - name: Apply product refresh
+        run: |
+          python <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f"Missing expected block: {label}")
+              return text.replace(old, new, 1)
+
+          workspace_path = Path("app/workspace/page.tsx")
+          workspace = workspace_path.read_text()
+
+          workspace = replace_once(
+              workspace,
+              'const panelLayoutStorageKey = "skycode:workspace-panel-layout:v1";\nconst workspaceLayoutStorageKey = "skycode:workspace-layout-version:v1";',
+              'const panelLayoutStorageKey = "skycode:workspace-panel-layout:v1";\nconst workspaceDraftStorageKey = "skycode:workspace-draft:v2";',
+              "workspace storage keys",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '  const [layoutVersion, setLayoutVersion] =\n    useState<WorkspaceLayoutVersion>("studio");',
+              '  const layoutVersion: WorkspaceLayoutVersion = "studio";',
+              "fixed workspace layout",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '  const [onboardingOpen, setOnboardingOpen] = useState(true);',
+              '  const [onboardingOpen, setOnboardingOpen] = useState(false);\n  const [workspaceHydrated, setWorkspaceHydrated] = useState(false);',
+              "onboarding state",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '  } | null>(null);\n\n  // Multi-user collaborative file locking state',
+              '  } | null>(null);\n  const workspaceUndoStackRef = useRef<WorkspaceFiles[]>([]);\n  const workspaceRedoStackRef = useRef<WorkspaceFiles[]>([]);\n  const previousFilesRef = useRef<WorkspaceFiles>(starterFiles);\n  const historyReadyRef = useRef(false);\n  const applyingHistoryRef = useRef(false);\n\n  // Multi-user collaborative file locking state',
+              "workspace history refs",
+          )
+
+          hydration_pattern = re.compile(
+              r'  useEffect\(\(\) => \{\n    const draftValue = window\.sessionStorage\.getItem\(cloudStorageKeys\.draft\);.*?\n  \}, \[\]\);\n\n  useEffect\(\(\) => \{\n    const requestedId',
+              re.S,
+          )
+          hydration_replacement = '''  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get("project");
+    const draftValue =
+      window.localStorage.getItem(workspaceDraftStorageKey) ??
+      window.sessionStorage.getItem(cloudStorageKeys.draft);
+
+    if (draftValue) {
+      try {
+        const draft = JSON.parse(draftValue) as {
+          files?: WorkspaceFiles;
+          baselineFiles?: WorkspaceFiles;
+          projectId?: string;
+          projectName?: string;
+          saveStatus?: "Saved" | "Unsaved";
+          category?: ProjectCategory | null;
+          buildPrompt?: string;
+          projectBrief?: string;
+        };
+        if (
+          draft.files &&
+          ["index.html", "styles.css", "app.js", "package.json"].every(
+            (name) => typeof draft.files?.[name as FileName] === "string",
+          )
+        ) {
+          setFiles(draft.files);
+          setPreviewFiles(draft.files);
+          setBaselineFiles(draft.baselineFiles ?? draft.files);
+        }
+        setProjectId(
+          typeof draft.projectId === "string" ? draft.projectId : "",
+        );
+        if (typeof draft.projectName === "string") setProjectName(draft.projectName);
+        if (draft.saveStatus === "Saved" || draft.saveStatus === "Unsaved") {
+          setSaveStatus(draft.saveStatus);
+        }
+        if (draft.category) setSelectedCategory(draft.category);
+        if (typeof draft.buildPrompt === "string") setBuildPrompt(draft.buildPrompt);
+        if (typeof draft.projectBrief === "string") setProjectBrief(draft.projectBrief);
+        setOnboardingOpen(false);
+      } catch {
+        window.localStorage.removeItem(workspaceDraftStorageKey);
+      }
+    } else if (!requestedId) {
+      setOnboardingOpen(true);
+    }
+
+    window.sessionStorage.removeItem(cloudStorageKeys.draft);
+    window.localStorage.removeItem("skycode:workspace-layout-version:v1");
+    setWorkspaceHydrated(true);
+
+    void getManagedAiStatus()
+      .then((status) => {
+        setCloudAuthenticated(status.authenticated);
+        setCloudConfigured(status.configured);
+        setCloudConnected(status.available);
+        setCloudModel(status.model ?? "");
+        if (status.available) setAiMode("cloud");
+      })
+      .catch(() => {
+        setCloudAuthenticated(false);
+        setCloudConfigured(false);
+        setCloudConnected(false);
+        setCloudModel("");
+      });
+  }, []);
+
+  useEffect(() => {
+    const requestedId'''
+          workspace, count = hydration_pattern.subn(hydration_replacement, workspace, count=1)
+          if count != 1:
+              raise SystemExit("Could not replace workspace hydration block")
+
+          saved_layout_effect = '''  useEffect(() => {
+    const savedVersion = window.localStorage.getItem(
+      workspaceLayoutStorageKey,
+    );
+    if (savedVersion === "studio" || savedVersion === "classic") {
+      setLayoutVersion(savedVersion);
+    }
+  }, []);
+
+'''
+          workspace = replace_once(
+              workspace,
+              saved_layout_effect,
+              "",
+              "legacy layout persistence",
+          )
+
+          panel_effect_marker = '''  useEffect(() => {
+    if (!panelLayoutReady) return;
+    window.localStorage.setItem(
+      panelLayoutStorageKey,
+      JSON.stringify(panelSizes),
+    );
+  }, [panelLayoutReady, panelSizes]);
+'''
+          autosave_effects = panel_effect_marker + '''
+
+  useEffect(() => {
+    if (!workspaceHydrated) return;
+    const timer = window.setTimeout(() => {
+      try {
+        window.localStorage.setItem(
+          workspaceDraftStorageKey,
+          JSON.stringify({
+            files,
+            baselineFiles,
+            projectId,
+            projectName,
+            saveStatus: saveStatus === "Saving" ? "Unsaved" : saveStatus,
+            category: selectedCategory,
+            buildPrompt,
+            projectBrief,
+          }),
+        );
+      } catch {
+        // Browser storage can be unavailable in private or restricted contexts.
+      }
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [
+    baselineFiles,
+    buildPrompt,
+    files,
+    projectBrief,
+    projectId,
+    projectName,
+    saveStatus,
+    selectedCategory,
+    workspaceHydrated,
+  ]);
+
+  useEffect(() => {
+    if (
+      !workspaceHydrated ||
+      onboardingOpen ||
+      !selectedCategory ||
+      aiWorking
+    ) {
+      return;
+    }
+    setSaveStatus("Unsaved");
+    const timer = window.setTimeout(() => {
+      void saveProject(true);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [
+    aiWorking,
+    files,
+    onboardingOpen,
+    projectName,
+    selectedCategory,
+    workspaceHydrated,
+  ]);
+
+  useEffect(() => {
+    if (!workspaceHydrated) return;
+    if (!historyReadyRef.current) {
+      historyReadyRef.current = true;
+      previousFilesRef.current = files;
+      return;
+    }
+    if (applyingHistoryRef.current) {
+      applyingHistoryRef.current = false;
+      previousFilesRef.current = files;
+      return;
+    }
+    if (JSON.stringify(previousFilesRef.current) === JSON.stringify(files)) return;
+    workspaceUndoStackRef.current = [
+      ...workspaceUndoStackRef.current.slice(-49),
+      previousFilesRef.current,
+    ];
+    workspaceRedoStackRef.current = [];
+    previousFilesRef.current = files;
+  }, [files, workspaceHydrated]);
+'''
+          workspace = replace_once(
+              workspace,
+              panel_effect_marker,
+              autosave_effects,
+              "autosave and history effects",
+          )
+
+          old_persist = '''  function persistWorkspaceDraft() {
+    try {
+      window.sessionStorage.setItem(
+        cloudStorageKeys.draft,
+        JSON.stringify({
+          files,
+          baselineFiles,
+          projectId,
+          projectName,
+          saveStatus: saveStatus === "Saving" ? "Unsaved" : saveStatus,
+          category: selectedCategory,
+          buildPrompt,
+          projectBrief,
+          onboardingOpen,
+        }),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function saveProject() {'''
+          new_persist = '''  function persistWorkspaceDraft() {
+    try {
+      const draft = JSON.stringify({
+        files,
+        baselineFiles,
+        projectId,
+        projectName,
+        saveStatus: saveStatus === "Saving" ? "Unsaved" : saveStatus,
+        category: selectedCategory,
+        buildPrompt,
+        projectBrief,
+      });
+      window.localStorage.setItem(workspaceDraftStorageKey, draft);
+      window.sessionStorage.setItem(cloudStorageKeys.draft, draft);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function saveProject(silent = false) {'''
+          workspace = replace_once(workspace, old_persist, new_persist, "persistent draft helper")
+
+          workspace = replace_once(
+              workspace,
+              '''      if (response.status === 401) {
+        setSaveStatus("Unsaved");
+        if (!persistWorkspaceDraft()) {
+          throw new Error(
+            "Sign-in is required, and this browser could not preserve the draft.",
+          );
+        }
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(
+          `/signin-with-chatgpt?return_to=${encodeURIComponent(returnTo)}`,
+        );
+        return;
+      }''',
+              '''      if (response.status === 401) {
+        setSaveStatus("Unsaved");
+        if (!persistWorkspaceDraft()) {
+          throw new Error(
+            "Sign-in is required, and this browser could not preserve the draft.",
+          );
+        }
+        if (silent) return;
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        window.location.assign(
+          `/signin-with-chatgpt?return_to=${encodeURIComponent(returnTo)}`,
+        );
+        return;
+      }''',
+              "silent autosave authentication",
+          )
+          workspace = replace_once(
+              workspace,
+              '''      setSaveStatus("Saved");
+      showToast("Project saved securely");
+    } catch (error) {
+      setSaveStatus("Unsaved");
+      showToast(error instanceof Error ? error.message : "Project could not be saved.");
+    }''',
+              '''      setSaveStatus("Saved");
+      if (!silent) showToast("Project synced securely");
+    } catch (error) {
+      setSaveStatus("Unsaved");
+      if (!silent) {
+        showToast(error instanceof Error ? error.message : "Project could not be saved.");
+      }
+    }''',
+              "silent autosave feedback",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '''  function switchLayout(version: WorkspaceLayoutVersion) {
+    setLayoutVersion(version);
+    window.localStorage.setItem(workspaceLayoutStorageKey, version);
+    showToast(
+      version === "studio"
+        ? "Version 1 studio layout"
+        : "Version 2 classic layout",
+    );
+  }
+
+''',
+              "",
+              "layout switch function",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '''  function openAiAssistant() {
+    if (!selectedCategory) {
+      openBuildWizard();
+      return;
+    }
+    setOnboardingOpen(false);
+    setMobileView("ai");
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLTextAreaElement>(".prompt-box textarea")
+        ?.focus();
+    });
+  }
+
+''',
+              "",
+              "Sky AI opener",
+          )
+
+          history_insert_marker = '''  function selectPreviewSection(index: number) {'''
+          history_functions = '''  function undoWorkspaceChange() {
+    const previous = workspaceUndoStackRef.current.at(-1);
+    if (!previous) {
+      showToast("No change to undo.");
+      return;
+    }
+    workspaceUndoStackRef.current = workspaceUndoStackRef.current.slice(0, -1);
+    workspaceRedoStackRef.current = [
+      ...workspaceRedoStackRef.current.slice(-49),
+      files,
+    ];
+    applyingHistoryRef.current = true;
+    setFiles(previous);
+    setPreviewFiles(previous);
+    setSaveStatus("Unsaved");
+    setRunCount((count) => count + 1);
+    resetSectionInspectorState();
+    showToast("Change undone");
+  }
+
+  function redoWorkspaceChange() {
+    const next = workspaceRedoStackRef.current.at(-1);
+    if (!next) {
+      showToast("No change to redo.");
+      return;
+    }
+    workspaceRedoStackRef.current = workspaceRedoStackRef.current.slice(0, -1);
+    workspaceUndoStackRef.current = [
+      ...workspaceUndoStackRef.current.slice(-49),
+      files,
+    ];
+    applyingHistoryRef.current = true;
+    setFiles(next);
+    setPreviewFiles(next);
+    setSaveStatus("Unsaved");
+    setRunCount((count) => count + 1);
+    resetSectionInspectorState();
+    showToast("Change restored");
+  }
+
+  useEffect(() => {
+    function handleWorkspaceShortcut(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+      const key = event.key.toLowerCase();
+      if (key !== "z" && key !== "y") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.matches("input, textarea, [contenteditable='true']")
+      ) {
+        return;
+      }
+      event.preventDefault();
+      if (key === "y" || (key === "z" && event.shiftKey)) {
+        redoWorkspaceChange();
+      } else {
+        undoWorkspaceChange();
+      }
+    }
+    window.addEventListener("keydown", handleWorkspaceShortcut);
+    return () => window.removeEventListener("keydown", handleWorkspaceShortcut);
+  }, [files]);
+
+'''
+          workspace = replace_once(
+              workspace,
+              history_insert_marker,
+              history_functions + history_insert_marker,
+              "workspace undo and redo",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '''          <button className={`save-state ${saveStatus.toLowerCase()}`} onClick={saveProject}>
+            <i /> {saveStatus}
+          </button>
+''',
+              "",
+              "manual save state button",
+          )
+
+          ai_launch_pattern = re.compile(
+              r'''          <button\n            className=\{`ai-launch-button\$\{cloudConnected \? " cloud-ready" : ""\}`\}.*?          </button>\n''',
+              re.S,
+          )
+          workspace, count = ai_launch_pattern.subn("", workspace, count=1)
+          if count != 1:
+              raise SystemExit("Could not remove Sky AI launch button")
+
+          version_switch_pattern = re.compile(
+              r'''          <div\n            className="layout-version-switcher".*?          </div>\n''',
+              re.S,
+          )
+          workspace, count = version_switch_pattern.subn("", workspace, count=1)
+          if count != 1:
+              raise SystemExit("Could not remove layout version switcher")
+
+          workspace = replace_once(
+              workspace,
+              '''          <div className="avatars" aria-label="Project collaborators">
+            <span>SK</span><span>AI</span>
+          </div>''',
+              '''          <div className="avatars" aria-label="Project owner">
+            <span>SK</span>
+          </div>''',
+              "AI collaborator avatar",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '''              <button onClick={openAiAssistant}>
+                <Icon name="spark" size={15} /> Open Sky AI
+              </button>
+''',
+              "",
+              "overflow Sky AI action",
+          )
+
+          overflow_layout_pattern = re.compile(
+              r'''              <span />\n              <strong>Layout</strong>\n              <button onClick=\{\(\) => switchLayout\("studio"\)\}>.*?              <button onClick=\{\(\) => resetPanelSize\(\)\}>\n                <Icon name="refresh" size=\{15\} /> Reset panel sizes\n              </button>\n''',
+              re.S,
+          )
+          workspace, count = overflow_layout_pattern.subn(
+              '''              <span />
+              <strong>Layout</strong>
+              <button onClick={() => resetPanelSize()}>
+                <Icon name="refresh" size={15} /> Reset panel sizes
+              </button>
+''',
+              workspace,
+              count=1,
+          )
+          if count != 1:
+              raise SystemExit("Could not simplify overflow layout actions")
+
+          workspace = replace_once(
+              workspace,
+              '''                  <button onClick={() => { void saveProject(); setOptionsOpen(false); }}>Save project</button>''',
+              '''                  <button onClick={() => { void saveProject(); setOptionsOpen(false); }}>Sync project now</button>''',
+              "file menu sync label",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '''              <button onClick={() => void saveProject()}><span className="tool-icon save">✓</span><div><b>Save project</b><small>Store files securely</small></div><span>›</span></button>''',
+              '''              <button onClick={() => void saveProject()}><span className="tool-icon save">✓</span><div><b>Sync project now</b><small>Changes autosave continuously</small></div><span>›</span></button>''',
+              "database autosave label",
+          )
+
+          workspace = replace_once(
+              workspace,
+              '''                <button
+                  onClick={undoSectionChange}
+                  disabled={!sectionUndoStack.length}
+                  aria-label="Undo section change"
+                  title="Undo section change"
+                >
+                  ↶
+                </button>
+                <button
+                  onClick={redoSectionChange}
+                  disabled={!sectionRedoStack.length}
+                  aria-label="Redo section change"
+                  title="Redo section change"
+                >
+                  ↷
+                </button>''',
+              '''                <button
+                  onClick={undoWorkspaceChange}
+                  aria-label="Undo workspace change"
+                  title="Undo (Ctrl/Cmd+Z)"
+                >
+                  ↶
+                </button>
+                <button
+                  onClick={redoWorkspaceChange}
+                  aria-label="Redo workspace change"
+                  title="Redo (Ctrl/Cmd+Shift+Z or Ctrl+Y)"
+                >
+                  ↷
+                </button>''',
+              "global undo redo buttons",
+          )
+
+          mobile_ai_pattern = re.compile(
+              r'''        <button\n          className=\{mobileView === "ai" \? "active" : ""\}.*?        </button>\n''',
+              re.S,
+          )
+          workspace, count = mobile_ai_pattern.subn("", workspace, count=1)
+          if count != 1:
+              raise SystemExit("Could not remove mobile Sky AI tab")
+
+          workspace_path.write_text(workspace)
+
+          visibility_css = '''/* Preview and Code are intentionally separate product surfaces. */
+.workspace {
+  --purple: #ff5a24;
+  --purple-2: #ff8a5b;
+}
+
+.workspace .logo-mark {
+  border-color: #ff6a36;
+  background: linear-gradient(145deg, #59220f, #24130d);
+  box-shadow: inset 0 1px #ffffff20, 0 5px 18px #ff5a2426;
+}
+
+.workspace .logo-mark span {
+  background: linear-gradient(135deg, #ffd0bf, #ff5a24);
+}
+
+.workspace .top-actions .deploy-button,
+.workspace .build-project-button,
+.workspace .section-primary-action {
+  border-color: #ff6b37;
+  background: linear-gradient(180deg, #ff6b37, #e84814);
+  color: #fff;
+}
+
+.workspace .activity-bar button.active::before,
+.workspace .bottom-dock-tabs button.active::after,
+.workspace .workspace-canvas-switcher button.active::after {
+  background: #ff5a24 !important;
+}
+
+.workspace .activity-bar .activity-count,
+.workspace .change-dot {
+  background: #ff5a24;
+}
+
+.workspace .section-inspector-tabs button.active,
+.workspace .section-code-toggle.active,
+.workspace .section-mode-toggle.active {
+  border-color: #ff6b37 !important;
+  background: #2b1710 !important;
+  color: #ff9a76 !important;
+}
+
+.workspace .save-state,
+.workspace .ai-launch-button,
+.workspace .layout-version-switcher,
+.workspace .ai-panel,
+.workspace .resize-handle-ai {
+  display: none !important;
+}
+
+.app-shell[data-canvas-mode="preview"] .activity-bar,
+.app-shell[data-canvas-mode="preview"] .explorer.activity-panel,
+.app-shell[data-canvas-mode="preview"] .editor-column,
+.app-shell[data-canvas-mode="preview"] .bottom-dock,
+.app-shell[data-canvas-mode="preview"] .terminal-panel,
+.app-shell[data-canvas-mode="preview"] .resize-handle-preview,
+.app-shell[data-canvas-mode="preview"] .resize-handle-utility,
+.app-shell:not([data-canvas-mode="code"]) .bottom-dock,
+.app-shell:not([data-canvas-mode="code"]) .terminal-panel,
+.app-shell:not([data-canvas-mode="code"]) .resize-handle-utility {
+  display: none !important;
+}
+
+.app-shell[data-canvas-mode="preview"] .section-code-toggle {
+  display: none !important;
+}
+
+@media (min-width: 821px) {
+  .app-shell {
+    grid-template-columns: minmax(480px, 1fr) minmax(360px, 42vw) !important;
+  }
+
+  .app-shell .editor-column {
+    grid-column: 1 !important;
+  }
+
+  .app-shell .preview-panel {
+    grid-column: 2 !important;
+  }
+
+  .app-shell .activity-bar,
+  .app-shell .explorer.activity-panel,
+  .app-shell .bottom-dock {
+    grid-column: 1 / 3 !important;
+  }
+
+  .app-shell[data-canvas-mode="preview"] {
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell[data-canvas-mode="preview"] .preview-panel {
+    display: grid !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .app-shell[data-canvas-mode="code"] .explorer.activity-panel {
+    display: flex !important;
+    transform: translateX(0) !important;
+  }
+
+  .app-shell[data-canvas-mode="code"] .explorer.activity-panel .explorer-footer {
+    display: block !important;
+  }
+}
+
+.workspace:has(.app-shell[data-canvas-mode="preview"]) {
+  grid-template-rows: 54px minmax(0, 1fr) !important;
+}
+
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .statusbar,
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .layout-reset-button,
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .avatars {
+  display: none !important;
+}
+
+@media (max-width: 820px), (max-width: 1100px) and (pointer: coarse) {
+  .mobile-workspace-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+'''
+          Path("app/workspace/code-view-visibility.css").write_text(visibility_css)
+
+          homepage = '''import type { Metadata } from "next";
+import Link from "next/link";
+import { MarketingFooter, MarketingHeader } from "./components/MarketingShell";
+
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+
+export const metadata: Metadata = {
+  title: "AI Website Builder, Web App Builder & Online Code Editor",
+  description:
+    "Build websites and web apps with AI, edit sections visually or in code, autosave private projects, preview safely, undo changes, and export the source.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "SkyCode — AI Website and Web App Builder",
+    description:
+      "Generate a complete browser project, edit every section or file, autosave your work, and export code you own.",
+    url: "/",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SkyCode — AI Website and Web App Builder",
+    description:
+      "Build, edit, autosave, preview, and export real browser projects in one workspace.",
+  },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "@id": `${baseUrl}/#app`,
+  name: "SkyCode",
+  url: baseUrl,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any",
+  browserRequirements: "Requires a modern web browser",
+  description:
+    "AI-assisted website and web application builder with visual section editing, a complete code view, private project autosave, safe preview, undo and redo, and source export.",
+  featureList: [
+    "AI-assisted website and web app generation",
+    "Visual section content and design editing",
+    "Editable HTML, CSS, JavaScript, and JSON files",
+    "Automatic private project saving",
+    "Workspace undo and redo shortcuts",
+    "Restricted live browser preview",
+    "Project source export",
+  ],
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    availability: "https://schema.org/InStock",
+  },
+  publisher: { "@id": `${baseUrl}/#organization` },
+};
+
+const buildTypes = [
+  "Website",
+  "Web app",
+  "Booking",
+  "Dashboard",
+  "Store",
+  "Portfolio",
+];
+
+const audiences = [
+  "FOUNDERS",
+  "DEVELOPERS",
+  "DESIGNERS",
+  "PRODUCT TEAMS",
+  "AGENCIES",
+];
+
+export default function HomePage() {
+  return (
+    <div className="marketing-site home-replit">
+      <MarketingHeader />
+
+      <main>
+        <section className="home-hero">
+          <div className="home-hero-copy">
+            <span className="home-kicker">AI WEBSITE & WEB APP BUILDER</span>
+            <h1>Build the product. Keep the code.</h1>
+            <p>
+              SkyCode turns an idea into a complete browser project, then gives
+              you visual section editing, a full code view, automatic saving,
+              safe preview, undo and redo, and source you can export.
+            </p>
+          </div>
+
+          <div className="home-composer">
+            <span className="home-composer-label">Describe what you want to build</span>
+            <div className="home-composer-input">
+              <span>Build a responsive booking website for a creative studio…</span>
+              <Link href="/workspace" aria-label="Start building in SkyCode">
+                <span>Start building</span>
+                <b>↗</b>
+              </Link>
+            </div>
+            <div className="home-build-types" aria-label="Popular project types">
+              {buildTypes.map((type) => (
+                <Link href="/workspace" key={type}>
+                  {type}
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="home-hero-links">
+            <Link href="/workspace">Open the builder</Link>
+            <Link href="/features">Explore every feature</Link>
+          </div>
+        </section>
+
+        <section className="home-audience" aria-label="Who SkyCode is built for">
+          <span>BUILT FOR</span>
+          <div>
+            {audiences.map((audience) => (
+              <b key={audience}>{audience}</b>
+            ))}
+          </div>
+        </section>
+
+        <section className="home-agent">
+          <div className="home-section-heading">
+            <span>WHAT WORKS TODAY</span>
+            <h2>From first prompt to a saved project.</h2>
+            <p>
+              Start quickly, refine visually, inspect the source, and return to
+              the same project without losing your progress.
+            </p>
+          </div>
+
+          <div className="home-agent-grid">
+            <article className="home-story-card home-story-design">
+              <span className="home-card-label">GENERATE</span>
+              <h3>Create the complete starting project.</h3>
+              <p>
+                Choose a project type and describe the result. SkyCode creates
+                the HTML, CSS, JavaScript, configuration, and live preview.
+              </p>
+              <div className="home-wireframe" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+                <span />
+              </div>
+            </article>
+
+            <article className="home-story-card home-story-move">
+              <span className="home-card-label">EDIT VISUALLY</span>
+              <h3>Change one section without breaking the page.</h3>
+              <p>
+                Select a section in Preview, update its content or design, move
+                it, duplicate it, or remove it while the rest stays untouched.
+              </p>
+              <div className="home-progress" aria-hidden="true">
+                <span><i>1</i><b>Select section</b><em>Ready</em></span>
+                <span><i>2</i><b>Edit content</b><em>Ready</em></span>
+                <span className="active"><i>3</i><b>Review preview</b><em>Live</em></span>
+              </div>
+            </article>
+
+            <article className="home-story-card home-story-ship">
+              <span className="home-card-label">EDIT CODE</span>
+              <h3>Open every file when you need control.</h3>
+              <p>
+                Switch to Code for files, search, source checkpoints, outline,
+                timeline, problems, logs, and the complete editable source.
+              </p>
+              <div className="home-code-lines" aria-hidden="true">
+                <span><i>01</i><b>const</b> project = buildIdea()</span>
+                <span><i>02</i>preview(project)</span>
+                <span><i>03</i><b>return</b> exportSource(project)</span>
+              </div>
+            </article>
+
+            <article className="home-story-card home-story-team">
+              <span className="home-card-label">KEEP YOUR WORK</span>
+              <h3>Autosave, undo, redo, and continue later.</h3>
+              <p>
+                Every project change is preserved in the browser and synced to
+                private project storage. Keyboard undo and redo are built in.
+              </p>
+              <Link href="/workspace">Start a project <span>↗</span></Link>
+            </article>
+          </div>
+        </section>
+
+        <section className="home-platform">
+          <div className="home-section-heading">
+            <span>ONE FOCUSED WORKSPACE</span>
+            <h2>Preview for building. Code for development.</h2>
+          </div>
+
+          <div className="home-platform-grid">
+            <article>
+              <span>01 / PREVIEW</span>
+              <h3>A clean live canvas.</h3>
+              <p>
+                Review the website at desktop, tablet, or phone size and edit
+                individual sections without developer panels in the way.
+              </p>
+              <div className="platform-preview" aria-hidden="true">
+                <span />
+                <div><i /><i /><i /></div>
+              </div>
+            </article>
+
+            <article>
+              <span>02 / CODE</span>
+              <h3>Developer tools stay together.</h3>
+              <p>
+                Files, search, source control, database tools, outline,
+                timeline, terminal, problems, and logs live in Code view.
+              </p>
+              <div className="platform-files" aria-hidden="true">
+                <i>HTML</i><i>CSS</i><i>JS</i><i>JSON</i>
+              </div>
+            </article>
+
+            <article>
+              <span>03 / AUTOSAVE</span>
+              <h3>No manual save state to manage.</h3>
+              <p>
+                Changes are kept as a local recovery draft and synced to the
+                current project automatically after you stop typing.
+              </p>
+              <div className="platform-status">
+                <span><i /> Browser copy ready</span>
+                <span><i /> Project synced</span>
+              </div>
+            </article>
+
+            <article>
+              <span>04 / RECOVERY</span>
+              <h3>Undo the change, not the whole project.</h3>
+              <p>
+                Use Ctrl or Command Z to undo workspace changes, restore them
+                with redo, and export a static copy whenever you need it.
+              </p>
+              <div className="platform-prompt">
+                <span>⌘ Z &nbsp; Undo</span>
+                <b>⌘ ⇧ Z</b>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section className="home-product">
+          <div className="home-product-copy">
+            <span>THE CURRENT PRODUCT</span>
+            <h2>A real project, not a temporary demo.</h2>
+            <p>
+              SkyCode stores project files, restores the last workspace after a
+              reload, locks active files during collaboration, validates common
+              issues, and keeps the export independent from the editor.
+            </p>
+            <Link href="/workspace">Open SkyCode <span>↗</span></Link>
+          </div>
+
+          <div className="home-product-window" aria-label="SkyCode workspace preview">
+            <div className="product-topbar">
+              <strong>SkyCode</strong>
+              <span>studio-booking</span>
+              <b>Run</b>
+            </div>
+            <div className="product-shell">
+              <aside>
+                <span>◇</span>
+                <span>⌕</span>
+                <span>⑂</span>
+                <span>▦</span>
+              </aside>
+              <div className="product-ai">
+                <small>PROJECT</small>
+                <p>studio-booking</p>
+                <span><i /> Autosave active</span>
+                <span><i /> 4 source files</span>
+                <span className="working"><i /> Preview current</span>
+              </div>
+              <div className="product-code">
+                <small>index.html</small>
+                <pre><code>{`<main class="booking-app">
+  <h1>Book your next session</h1>
+  <Schedule availability={slots} />
+</main>`}</code></pre>
+                <div><b>PROBLEMS</b><span>✓ No blocking issues</span></div>
+              </div>
+              <div className="product-preview">
+                <small>PREVIEW</small>
+                <div>
+                  <span>STUDIO</span>
+                  <h3>Book your next session.</h3>
+                  <p>Choose a service and available time</p>
+                  <i /><i /><i />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="home-security">
+          <div>
+            <span>SECURITY BY DESIGN</span>
+            <h2>Your code and preview stay separated.</h2>
+          </div>
+          <div className="home-security-copy">
+            <p>
+              The live preview runs with restricted permissions, private routes
+              are excluded from search indexing, cross-origin writes are
+              rejected, and server API keys never enter generated project code.
+            </p>
+            <Link href="/security">Read the security model <span>↗</span></Link>
+          </div>
+          <div className="home-security-model" aria-label="SkyCode security model">
+            <span><b>01</b>Your source</span>
+            <i />
+            <span><b>02</b>Restricted preview</span>
+            <i />
+            <span><b>03</b>Private storage</span>
+          </div>
+        </section>
+
+        <section className="home-platform" aria-labelledby="home-faq-title">
+          <div className="home-section-heading">
+            <span>COMMON QUESTIONS</span>
+            <h2 id="home-faq-title">What you need to know before building.</h2>
+          </div>
+          <div className="home-platform-grid">
+            <article>
+              <span>CAN I EDIT THE CODE?</span>
+              <h3>Yes. Every generated file is editable.</h3>
+              <p>
+                SkyCode exposes the HTML, CSS, JavaScript, and project
+                configuration instead of locking the result behind a visual tool.
+              </p>
+            </article>
+            <article>
+              <span>DOES RELOAD LOSE MY WORK?</span>
+              <h3>No. The latest workspace is restored.</h3>
+              <p>
+                A browser recovery copy is kept continuously, and completed
+                projects sync to private storage automatically.
+              </p>
+            </article>
+            <article>
+              <span>CAN I EXPORT?</span>
+              <h3>Yes. The source remains yours to keep.</h3>
+              <p>
+                Export a static HTML build at any time and continue developing
+                the project outside SkyCode when that fits your workflow.
+              </p>
+            </article>
+            <article>
+              <span>IS THE PREVIEW ISOLATED?</span>
+              <h3>Yes. It runs inside a restricted sandbox.</h3>
+              <p>
+                Preview scripts cannot freely access the parent workspace or
+                external network resources, which reduces accidental exposure.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section className="home-final">
+          <span>START WITH A REAL IDEA</span>
+          <h2>Build the first working version today.</h2>
+          <p>Generate it, refine it, save it, and keep the code.</p>
+          <Link href="/workspace">Start building free <span>↗</span></Link>
+        </section>
+      </main>
+
+      <MarketingFooter />
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+    </div>
+  );
+}
+'''
+          Path("app/page.tsx").write_text(homepage)
+
+          layout = '''import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import "./marketing-theme.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: "SkyCode: AI Website Builder & Online Code Editor",
+    template: "%s | SkyCode",
+  },
+  description:
+    "Build websites and web apps with AI, edit sections visually or in code, autosave private projects, preview safely, and export source you can keep.",
+  applicationName: "SkyCode",
+  authors: [{ name: "SkyCode", url: baseUrl }],
+  creator: "SkyCode",
+  publisher: "SkyCode",
+  category: "technology",
+  manifest: "/manifest.webmanifest",
+  alternates: { canonical: "/" },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    siteName: "SkyCode",
+    locale: "en_US",
+    type: "website",
+    title: "SkyCode: AI Website Builder & Online Code Editor",
+    description:
+      "Generate complete browser projects, edit every section or file, autosave your work, and export the source.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SkyCode: AI Website Builder & Online Code Editor",
+    description:
+      "Build, edit, autosave, preview, undo, redo, and export real browser projects.",
+  },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SkyCode",
+  },
+  referrer: "strict-origin-when-cross-origin",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  other: {
+    "codex-preview": "development",
+  },
+};
+
+const siteStructuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${baseUrl}/#organization`,
+      name: "SkyCode",
+      url: baseUrl,
+      logo: `${baseUrl}/favicon.svg`,
+      description:
+        "SkyCode develops an AI-assisted browser workspace for building and editing websites and web applications.",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${baseUrl}/#website`,
+      name: "SkyCode",
+      alternateName: "SkyCode AI Website Builder",
+      url: baseUrl,
+      publisher: { "@id": `${baseUrl}/#organization` },
+      inLanguage: "en",
+    },
+  ],
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        {children}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
+        />
+      </body>
+    </html>
+  );
+}
+'''
+          Path("app/layout.tsx").write_text(layout)
+
+          robots = '''export const dynamic = "force-static";
+
+import type { MetadataRoute } from "next";
+
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: [
+        "/api/",
+        "/workspace",
+        "/dashboard",
+        "/signin-with-chatgpt",
+        "/signout-with-chatgpt",
+        "/callback",
+      ],
+    },
+    sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
+  };
+}
+'''
+          Path("app/robots.ts").write_text(robots)
+
+          sitemap = '''export const dynamic = "force-static";
+
+import type { MetadataRoute } from "next";
+
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+const lastModified = new Date("2026-08-01T00:00:00+03:00");
+
+export default function sitemap(): MetadataRoute.Sitemap {
+  return [
+    { url: baseUrl, lastModified, changeFrequency: "weekly", priority: 1 },
+    { url: `${baseUrl}/ai-app-builder`, lastModified, changeFrequency: "weekly", priority: 0.95 },
+    { url: `${baseUrl}/ai-website-builder`, lastModified, changeFrequency: "weekly", priority: 0.95 },
+    { url: `${baseUrl}/online-code-editor`, lastModified, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${baseUrl}/features`, lastModified, changeFrequency: "monthly", priority: 0.85 },
+    { url: `${baseUrl}/security`, lastModified, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/pricing`, lastModified, changeFrequency: "monthly", priority: 0.75 },
+    { url: `${baseUrl}/docs`, lastModified, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${baseUrl}/guides`, lastModified, changeFrequency: "weekly", priority: 0.85 },
+    { url: `${baseUrl}/status`, lastModified, changeFrequency: "daily", priority: 0.65 },
+    { url: `${baseUrl}/privacy`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/terms`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/cookies`, lastModified, changeFrequency: "yearly", priority: 0.25 },
+    { url: `${baseUrl}/acceptable-use`, lastModified, changeFrequency: "yearly", priority: 0.3 },
+    {
+      url: `${baseUrl}/guides/build-web-app-with-ai`,
+      lastModified,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+  ];
+}
+'''
+          Path("app/sitemap.ts").write_text(sitemap)
+
+          manifest = '''import type { MetadataRoute } from "next";
+
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "SkyCode AI Website Builder",
+    short_name: "SkyCode",
+    description:
+      "Build, edit, autosave, preview, and export websites and web apps in your browser.",
+    start_url: "/",
+    display: "standalone",
+    background_color: "#f7f3ec",
+    theme_color: "#ff5a24",
+    icons: [
+      {
+        src: "/favicon.svg",
+        sizes: "any",
+        type: "image/svg+xml",
+      },
+    ],
+  };
+}
+'''
+          Path("app/manifest.ts").write_text(manifest)
+
+          Path(".github/workflows/apply-workspace-home-refresh.yml").unlink()
+          PY
+
+      - name: Commit refresh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Refresh workspace persistence, homepage, and SEO"
+          git push origin HEAD:feature/workspace-home-seo-refresh
