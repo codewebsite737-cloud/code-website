@@ -2,11 +2,21 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "code-website",
   "compatibility_date": "2026-07-31",
-  "compatibility_flags": [],
+  "compatibility_flags": ["nodejs_compat"],
   "main": "dist/server/index.js",
   "assets": {
     "directory": "dist/client",
     "binding": "ASSETS",
     "run_worker_first": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "vars": {
+    "AI_DAILY_LIMIT": "20",
+    "OPENROUTER_MODEL": "openai/gpt-oss-20b:free"
   }
 }
