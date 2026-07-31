@@ -30,6 +30,30 @@ jobs:
               for line in script.splitlines()
           )
           script = script.replace(
+              '''def replace_once(text: str, old: str, new: str, label: str) -> str:
+    if old not in text:
+        raise SystemExit(f"Missing expected block: {label}")
+    return text.replace(old, new, 1)''',
+              '''def replace_once(text: str, old: str, new: str, label: str) -> str:
+    if old in text:
+        return text.replace(old, new, 1)
+    if label == "silent autosave authentication":
+        needle = "        const returnTo = `${window.location.pathname}${window.location.search}`;"
+        if needle in text:
+            return text.replace(needle, "        if (silent) return;\\n" + needle, 1)
+    if label == "silent autosave feedback":
+        saved = '      showToast("Project saved securely");'
+        failed = '      showToast(error instanceof Error ? error.message : "Project could not be saved.");'
+        if saved in text and failed in text:
+            text = text.replace(saved, '      if (!silent) showToast("Project synced securely");', 1)
+            return text.replace(
+                failed,
+                '      if (!silent) {\\n        showToast(error instanceof Error ? error.message : "Project could not be saved.");\\n      }',
+                1,
+            )
+    raise SystemExit(f"Missing expected block: {label}")''',
+          )
+          script = script.replace(
               'workspace = replace_once(workspace, old_persist, new_persist, "persistent draft helper")',
               '''persist_pattern = re.compile(
               r"  function persistWorkspaceDraft\\(\\) \\{.*?\\n  async function saveProject\\(\\) \\{",
