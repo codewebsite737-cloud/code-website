@@ -1,5 +1,3 @@
-export const dynamic = "force-static";
-
 import { getD1Binding } from "../../../db";
 import { getAiRuntimeConfig } from "../ai/runtime";
 

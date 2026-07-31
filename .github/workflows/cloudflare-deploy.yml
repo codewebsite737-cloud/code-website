@@ -38,21 +38,38 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
-      - name: Lint legacy code
-        continue-on-error: true
+      - name: Lint
         run: npm run lint
 
-      - name: Build production bundle
-        run: npm run build
+      - name: Build and test
+        run: npm test
 
-      - name: Run legacy rendered HTML test
-        continue-on-error: true
-        run: node --test tests/rendered-html.test.mjs
-
-      - name: Deploy to Cloudflare Workers
+      - name: Apply D1 migrations and deploy
         if: github.event_name != 'pull_request'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          # The first deploy provisions and binds D1 when the account has no DB yet.
+          npx wrangler deploy
+          npx wrangler d1 migrations apply DB --remote
+          # Deploy again after the schema is ready so the release is immediately usable.
+          npx wrangler deploy
+          if [ -n "$OPENROUTER_API_KEY" ]; then
+            printf '%s' "$OPENROUTER_API_KEY" | npx wrangler secret put OPENROUTER_API_KEY
+          else
+            echo "OPENROUTER_API_KEY is not configured; Instant Builder remains available."
+          fi
+
+      - name: Verify production health
+        if: github.event_name != 'pull_request'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error \
+              https://code-website.codewebsite737.workers.dev/api/health; then
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1

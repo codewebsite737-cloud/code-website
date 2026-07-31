@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const projects = sqliteTable(
   "projects",
@@ -84,18 +84,16 @@ export const aiUsageEvents = sqliteTable(
 export const projectLocks = sqliteTable(
   "project_locks",
   {
-    projectId: text("project_id").notNull(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
     filePath: text("file_path").notNull(),
     lockedBy: text("locked_by").notNull(),
     lockToken: text("lock_token").notNull(),
     updatedAtMs: integer("updated_at_ms").notNull(),
   },
   (table) => [
-    index("project_locks_project_file_idx").on(
-      table.projectId,
-      table.filePath,
-    ),
+    primaryKey({ columns: [table.projectId, table.filePath] }),
     index("project_locks_updated_idx").on(table.updatedAtMs),
   ],
 );
-
