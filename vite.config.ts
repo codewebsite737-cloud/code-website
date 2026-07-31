@@ -16,6 +16,10 @@ const cloudflareWorkerConfig = {
   main: "./worker/index.ts",
   compatibility_date: "2026-07-31",
   compatibility_flags: ["nodejs_compat"],
+  assets: {
+    directory: "dist/client",
+    run_worker_first: true,
+  },
   d1_databases: [],
   r2_buckets: [],
 };
