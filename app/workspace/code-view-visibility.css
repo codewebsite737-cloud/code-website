@@ -1,12 +1,14 @@
 /* Developer tools belong to Code view only.
    Keep this rule separate and loaded last so Preview mode can never expose
-   the terminal, logs, problems, or their resize handle. */
+   the terminal, logs, problems, outline, timeline, or their resize handle. */
 .app-shell[data-canvas-mode="preview"] .bottom-dock,
 .app-shell[data-canvas-mode="preview"] .terminal-panel,
 .app-shell[data-canvas-mode="preview"] .resize-handle-utility,
+.app-shell[data-canvas-mode="preview"] .explorer-footer,
 .app-shell:not([data-canvas-mode="code"]) .bottom-dock,
 .app-shell:not([data-canvas-mode="code"]) .terminal-panel,
-.app-shell:not([data-canvas-mode="code"]) .resize-handle-utility {
+.app-shell:not([data-canvas-mode="code"]) .resize-handle-utility,
+.app-shell:not([data-canvas-mode="code"]) .explorer-footer {
   display: none !important;
 }
 
