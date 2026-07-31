@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { getChatGPTUser } from "../../chatgpt-auth";
 import {
   ProjectInputError,

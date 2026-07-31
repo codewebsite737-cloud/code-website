@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 const securityText = `Contact: mailto:hello@skycode.dev
 Expires: 2027-07-30T00:00:00.000Z
 Canonical: https://skycode-ai-workspace.skymarketing737.chatgpt.site/.well-known/security.txt

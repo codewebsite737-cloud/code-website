@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import type { MetadataRoute } from "next";
 
 const baseUrl = "https://skycode-ai-workspace.skymarketing737.chatgpt.site";

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { chatGPTSignOutPath, getChatGPTUser } from "../chatgpt-auth";
 import DashboardClient from "./DashboardClient";
 
-export const dynamic = "force-dynamic";
+
 
 export const metadata: Metadata = {
   title: "Projects Dashboard",

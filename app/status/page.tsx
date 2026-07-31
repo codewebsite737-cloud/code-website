@@ -6,7 +6,7 @@ import {
   MarketingHeader,
 } from "../components/MarketingShell";
 
-export const dynamic = "force-dynamic";
+
 
 export const metadata: Metadata = {
   title: "System Status",
