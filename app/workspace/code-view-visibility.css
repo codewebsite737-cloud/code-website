@@ -49,6 +49,17 @@
     grid-column: 2 !important;
     grid-row: 1 !important;
   }
+
+  /* Code view must visibly own the developer explorer. Keep Files open so
+     OUTLINE and TIMELINE are clearly available there, never in Preview. */
+  .app-shell[data-canvas-mode="code"] .explorer.activity-panel {
+    display: flex !important;
+    transform: translateX(0) !important;
+  }
+
+  .app-shell[data-canvas-mode="code"] .explorer.activity-panel .explorer-footer {
+    display: block !important;
+  }
 }
 
 /* Remove developer-only chrome while Preview is active. */
