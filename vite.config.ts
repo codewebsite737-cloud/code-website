@@ -12,7 +12,7 @@ const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 // intentionally omitted so Wrangler can create/bind the Cloudflare resources
 // during the first deployment instead of using a local placeholder UUID.
 const cloudflareWorkerConfig = {
-  name: "skycode-ai-workspace",
+  name: "code-website",
   main: "./worker/index.ts",
   compatibility_date: "2026-07-31",
   compatibility_flags: ["nodejs_compat"],
