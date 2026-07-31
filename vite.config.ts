@@ -18,6 +18,7 @@ const cloudflareWorkerConfig = {
   compatibility_flags: ["nodejs_compat"],
   assets: {
     directory: "dist/client",
+    binding: "ASSETS",
     run_worker_first: true,
   },
   d1_databases: [],

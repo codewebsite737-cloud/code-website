@@ -57,7 +57,7 @@ const worker = {
 
     if (isStaticAsset && env?.ASSETS) {
       try {
-        const assetResponse = await env.ASSETS.fetch(new Request(request.url));
+        const assetResponse = await env.ASSETS.fetch(request.clone());
         if (assetResponse && assetResponse.status >= 200 && assetResponse.status < 400) {
           return withSecurityHeaders(request, assetResponse);
         }
@@ -77,7 +77,7 @@ const worker = {
 
     if (env?.ASSETS) {
       try {
-        const fallback = await env.ASSETS.fetch(new Request(request.url));
+        const fallback = await env.ASSETS.fetch(request.clone());
         if (fallback) return withSecurityHeaders(request, fallback);
       } catch {
         // Ignore fallback error
