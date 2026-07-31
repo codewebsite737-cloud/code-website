@@ -9,3 +9,16 @@
 .app-shell:not([data-canvas-mode="code"]) .resize-handle-utility {
   display: none !important;
 }
+
+/* Preview mode should use the full available workspace height.
+   The desktop grid normally reserves rows for developer tools; collapse those
+   rows while Preview is active so the preview reaches the bottom. */
+@media (min-width: 1181px) {
+  .app-shell[data-canvas-mode="preview"] {
+    grid-template-rows: minmax(0, 1fr) !important;
+  }
+
+  .app-shell[data-canvas-mode="preview"] .preview-panel {
+    grid-row: 1 / -1 !important;
+  }
+}
