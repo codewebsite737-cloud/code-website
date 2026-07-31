@@ -5428,7 +5428,7 @@ body:has(.workspace) {
     background: #183024;
   }
 
-  .app-shell[data-layout-version="studio"] .bottom-dock {
+  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .bottom-dock {
     display: grid;
     grid-column: 3;
     grid-row: 2 / 4;
@@ -5521,7 +5521,7 @@ body:has(.workspace) {
     border-left: 0;
   }
 
-  .app-shell[data-layout-version="studio"] .bottom-dock {
+  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .bottom-dock {
     display: grid;
     grid-column: 2 / 4;
     grid-row: 3 / 5;
