@@ -4799,7 +4799,7 @@ body:has(.workspace) {
     grid-row: 1;
   }
 
-  .bottom-dock {
+  .app-shell[data-canvas-mode="code"] .bottom-dock {
     grid-column: 3 / 5;
     grid-row: 2 / 4;
     display: grid;
@@ -4952,7 +4952,7 @@ body:has(.workspace) {
     grid-row: 2;
   }
 
-  .bottom-dock {
+  .app-shell[data-canvas-mode="code"] .bottom-dock {
     grid-column: 2 / 4;
     grid-row: 3 / 5;
     display: grid;
