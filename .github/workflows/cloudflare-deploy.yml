@@ -49,6 +49,25 @@ jobs:
         continue-on-error: true
         run: node --test tests/rendered-html.test.mjs
 
+      - name: Package full source download
+        run: |
+          zip -qr SkyCode-full-source.zip . \
+            -x '.git/*' \
+               'node_modules/*' \
+               'dist/*' \
+               '.next/*' \
+               '.wrangler/*' \
+               '.sites-runtime/*' \
+               '*.log'
+
+      - name: Upload full source download
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyCode-full-source
+          path: SkyCode-full-source.zip
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Deploy to Cloudflare Workers
         if: github.event_name != 'pull_request'
         uses: cloudflare/wrangler-action@v3
