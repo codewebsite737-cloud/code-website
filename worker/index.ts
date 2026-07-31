@@ -57,12 +57,12 @@ const worker = {
 
     if (isStaticAsset && env?.ASSETS) {
       try {
-        const assetResponse = await env.ASSETS.fetch(request.clone());
+        const assetResponse = await env.ASSETS.fetch(request.url);
         if (assetResponse && assetResponse.status >= 200 && assetResponse.status < 400) {
           return withSecurityHeaders(request, assetResponse);
         }
-      } catch {
-        // Continue to app handler if asset fetch fails
+      } catch (error) {
+        console.error("Asset fetch failed for", request.url, error);
       }
     }
 
@@ -77,8 +77,10 @@ const worker = {
 
     if (env?.ASSETS) {
       try {
-        const fallback = await env.ASSETS.fetch(request.clone());
-        if (fallback) return withSecurityHeaders(request, fallback);
+        const fallback = await env.ASSETS.fetch(request.url);
+        if (fallback && fallback.status >= 200 && fallback.status < 400) {
+          return withSecurityHeaders(request, fallback);
+        }
       } catch {
         // Ignore fallback error
       }
