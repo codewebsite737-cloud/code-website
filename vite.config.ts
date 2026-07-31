@@ -16,20 +16,8 @@ const cloudflareWorkerConfig = {
   main: "./worker/index.ts",
   compatibility_date: "2026-07-31",
   compatibility_flags: ["nodejs_compat"],
-  d1_databases: d1
-    ? [
-        {
-          binding: d1,
-        },
-      ]
-    : [],
-  r2_buckets: r2
-    ? [
-        {
-          binding: r2,
-        },
-      ]
-    : [],
+  d1_databases: [],
+  r2_buckets: [],
 };
 
 export default defineConfig(async () => {
