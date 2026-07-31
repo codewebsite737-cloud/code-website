@@ -1,18 +1,14 @@
-export const dynamic = "force-static";
-
-import { getChatGPTUser } from "../../chatgpt-auth";
-import {
-  ProjectInputError,
-  assertTrustedMutation,
-} from "../projects/policy";
+import { ProjectInputError, assertTrustedMutation } from "../projects/policy";
 import {
   takeFixedWindowRateLimit,
   type RateLimitState,
 } from "../shared/rate-limit";
 import {
-  AiInputError,
-  readAiGenerationInput,
-} from "./policy";
+  applyIdentityCookie,
+  getRequestIdentity,
+  type RequestIdentity,
+} from "../shared/session";
+import { AiInputError, readAiGenerationInput } from "./policy";
 import {
   AiProviderError,
   generateManagedProject,
@@ -22,6 +18,7 @@ import { getAiRuntimeConfig } from "./runtime";
 import { recordAiUsage } from "./store";
 
 const MINUTE_LIMIT = 4;
+const GUEST_DAILY_LIMIT = 5;
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const EMPTY_USAGE: AiProviderUsage = {
@@ -35,34 +32,38 @@ function json(
   data: unknown,
   init: ResponseInit = {},
   requestId = crypto.randomUUID(),
+  identity: RequestIdentity | null = null,
 ) {
   const headers = new Headers(init.headers);
   headers.set("Cache-Control", "no-store");
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Request-Id", requestId);
+  applyIdentityCookie(headers, identity);
   return Response.json(data, { ...init, headers });
 }
 
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   const requestId = crypto.randomUUID();
+  let identity: RequestIdentity | null = null;
   try {
-    const [user, config] = await Promise.all([
-      getChatGPTUser(request),
-      Promise.resolve(getAiRuntimeConfig()),
-    ]);
+    identity = await getRequestIdentity(request);
+    const config = getAiRuntimeConfig();
+    const dailyLimit = effectiveDailyLimit(identity, config.dailyLimit);
 
     return json(
       {
-        authenticated: Boolean(user),
-        available: Boolean(user) && config.configured,
+        accountType: identity.accountType,
+        authenticated: true,
+        available: config.configured,
         configured: config.configured,
-        dailyLimit: config.dailyLimit,
+        dailyLimit,
         model: config.model,
         provider: "openrouter",
       },
       {},
       requestId,
+      identity,
     );
   } catch (error) {
     console.error("AI status request failed", { requestId, error });
@@ -75,6 +76,7 @@ export async function GET(request?: Request) {
       },
       { status: 503 },
       requestId,
+      identity,
     );
   }
 }
@@ -82,24 +84,14 @@ export async function GET(request?: Request) {
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
   const startedAt = Date.now();
-  let ownerEmail = "";
+  let identity: RequestIdentity | null = null;
+  let ownerId = "";
   let configuredModel = "poolside/laguna-s-2.1:free";
 
   try {
     await assertTrustedMutation(request);
-    const user = await getChatGPTUser(request);
-    if (!user) {
-      return json(
-        {
-          code: "AUTH_REQUIRED",
-          error: "Sign in with ChatGPT to use server Cloud AI.",
-          signInPath: `/signin-with-chatgpt?return_to=${encodeURIComponent("/workspace")}`,
-        },
-        { status: 401 },
-        requestId,
-      );
-    }
-    ownerEmail = user.email;
+    identity = await getRequestIdentity(request);
+    ownerId = identity.ownerId;
 
     const config = getAiRuntimeConfig();
     configuredModel = config.model;
@@ -112,12 +104,13 @@ export async function POST(request: Request) {
         },
         { status: 503 },
         requestId,
+        identity,
       );
     }
 
     const minuteRateLimit = await takeFixedWindowRateLimit({
       bucket: "ai:minute",
-      identity: ownerEmail,
+      identity: ownerId,
       limit: MINUTE_LIMIT,
       windowMs: MINUTE_MS,
     });
@@ -127,13 +120,14 @@ export async function POST(request: Request) {
         null,
         requestId,
         "AI_MINUTE_LIMIT",
+        identity,
       );
     }
 
     const dailyRateLimit = await takeFixedWindowRateLimit({
       bucket: "ai:day",
-      identity: ownerEmail,
-      limit: config.dailyLimit,
+      identity: ownerId,
+      limit: effectiveDailyLimit(identity, config.dailyLimit),
       windowMs: DAY_MS,
     });
     if (!dailyRateLimit.allowed) {
@@ -142,6 +136,7 @@ export async function POST(request: Request) {
         dailyRateLimit,
         requestId,
         "AI_DAILY_LIMIT",
+        identity,
       );
     }
 
@@ -157,7 +152,7 @@ export async function POST(request: Request) {
         durationMs: Date.now() - startedAt,
         errorCode: null,
         model: result.model,
-        ownerEmail,
+        ownerEmail: ownerId,
         provider: result.provider,
         requestId,
         status: "success",
@@ -167,6 +162,7 @@ export async function POST(request: Request) {
       return json(
         {
           meta: {
+            accountType: identity.accountType,
             dailyRemaining: dailyRateLimit.remaining,
             model: result.model,
             provider: result.provider,
@@ -181,6 +177,7 @@ export async function POST(request: Request) {
           ),
         },
         requestId,
+        identity,
       );
     } catch (error) {
       if (error instanceof AiProviderError) {
@@ -196,7 +193,7 @@ export async function POST(request: Request) {
           durationMs: Date.now() - startedAt,
           errorCode: error.code,
           model: config.model,
-          ownerEmail,
+          ownerEmail: ownerId,
           provider: "openrouter",
           requestId,
           status: "error",
@@ -209,10 +206,17 @@ export async function POST(request: Request) {
     return apiFailure(
       error,
       requestId,
-      ownerEmail,
+      ownerId,
       configuredModel,
+      identity,
     );
   }
+}
+
+function effectiveDailyLimit(identity: RequestIdentity, configuredLimit: number) {
+  return identity.accountType === "guest"
+    ? Math.min(configuredLimit, GUEST_DAILY_LIMIT)
+    : configuredLimit;
 }
 
 function rateLimitFailure(
@@ -220,6 +224,7 @@ function rateLimitFailure(
   daily: RateLimitState | null,
   requestId: string,
   code: string,
+  identity: RequestIdentity,
 ) {
   const blocked = daily?.allowed === false ? daily : minute;
   return json(
@@ -238,6 +243,7 @@ function rateLimitFailure(
       },
     },
     requestId,
+    identity,
   );
 }
 
@@ -260,19 +266,17 @@ function aiRateLimitHeaders(
 function apiFailure(
   error: unknown,
   requestId: string,
-  ownerEmail: string,
+  ownerId: string,
   model: string,
+  identity: RequestIdentity | null,
 ) {
-  if (
-    error instanceof AiInputError ||
-    error instanceof ProjectInputError ||
-    (error && typeof error === "object" && typeof (error as any).status === "number" && (error as any).code)
-  ) {
-    const err = error as any;
+  const inputError = normalizeInputError(error);
+  if (inputError) {
     return json(
-      { code: err.code, error: err.message },
-      { status: err.status },
+      { code: inputError.code, error: inputError.message },
+      { status: inputError.status },
       requestId,
+      identity,
     );
   }
   if (error instanceof AiProviderError) {
@@ -284,12 +288,13 @@ function apiFailure(
       },
       { status: error.status },
       requestId,
+      identity,
     );
   }
 
   console.error("AI API request failed", {
     model,
-    owner: ownerEmail ? "authenticated" : "anonymous",
+    owner: ownerId ? "session" : "anonymous",
     requestId,
   });
   return json(
@@ -299,7 +304,32 @@ function apiFailure(
     },
     { status: 503 },
     requestId,
+    identity,
   );
+}
+
+function normalizeInputError(error: unknown) {
+  if (error instanceof AiInputError || error instanceof ProjectInputError) {
+    return {
+      code: error.code,
+      message: error.message,
+      status: error.status,
+    };
+  }
+  if (!error || typeof error !== "object") return null;
+  const candidate = error as Record<string, unknown>;
+  if (
+    typeof candidate.code !== "string" ||
+    typeof candidate.message !== "string" ||
+    typeof candidate.status !== "number"
+  ) {
+    return null;
+  }
+  return {
+    code: candidate.code,
+    message: candidate.message,
+    status: candidate.status,
+  };
 }
 
 async function recordUsageSafely(
