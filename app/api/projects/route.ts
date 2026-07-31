@@ -75,7 +75,7 @@ function apiFailure(error: unknown) {
 
 export async function GET(request: Request) {
   try {
-    const user = await getChatGPTUser();
+    const user = await getChatGPTUser(request);
     if (!user) return unauthorized();
 
     const rateLimit = await requireRateLimit(user.email, "GET");
@@ -115,9 +115,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await getChatGPTUser();
-    if (!user) return unauthorized();
     assertTrustedMutation(request);
+    const user = await getChatGPTUser(request);
+    if (!user) return unauthorized();
 
     const rateLimit = await requireRateLimit(user.email, "POST");
     if (!rateLimit.allowed) return tooManyRequests(rateLimit);
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const user = await getChatGPTUser();
+    const user = await getChatGPTUser(request);
     if (!user) return unauthorized();
     assertTrustedMutation(request);
 
@@ -216,7 +216,7 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const user = await getChatGPTUser();
+    const user = await getChatGPTUser(request);
     if (!user) return unauthorized();
     assertTrustedMutation(request);
 

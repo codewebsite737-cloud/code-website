@@ -62,7 +62,7 @@ export default function HomePage() {
         <section className="home-hero">
           <div className="home-hero-copy">
             <span className="home-kicker">● SYS // AI SOFTWARE BUILDER</span>
-            <h1>What will you <em>build?</em></h1>
+            <h1>What will you build?</h1>
             <p>
               Turn an idea into working software. SkyCode plans the structure,
               writes real code, and gives you a clear place to review every

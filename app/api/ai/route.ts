@@ -44,11 +44,11 @@ function json(
   return Response.json(data, { ...init, headers });
 }
 
-export async function GET() {
+export async function GET(request?: Request) {
   const requestId = crypto.randomUUID();
   try {
     const [user, config] = await Promise.all([
-      getChatGPTUser(),
+      getChatGPTUser(request),
       Promise.resolve(getAiRuntimeConfig()),
     ]);
 
@@ -86,7 +86,8 @@ export async function POST(request: Request) {
   let configuredModel = "poolside/laguna-s-2.1:free";
 
   try {
-    const user = await getChatGPTUser();
+    assertTrustedMutation(request);
+    const user = await getChatGPTUser(request);
     if (!user) {
       return json(
         {
@@ -99,7 +100,6 @@ export async function POST(request: Request) {
       );
     }
     ownerEmail = user.email;
-    assertTrustedMutation(request);
 
     const config = getAiRuntimeConfig();
     configuredModel = config.model;

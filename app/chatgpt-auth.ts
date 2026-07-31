@@ -16,16 +16,32 @@ const SIGN_IN_PATH = "/signin-with-chatgpt";
 const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
-export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
+export async function getChatGPTUser(req?: Request): Promise<ChatGPTUser | null> {
   try {
-    const requestHeaders = await headers();
-    const email = requestHeaders.get(USER_EMAIL_HEADER);
+    let email: string | null = null;
+    let encodedFullName: string | null = null;
+    let encoding: string | null = null;
+
+    if (req && req.headers) {
+      const h = req.headers as any;
+      email = typeof h.get === "function" ? (h.get(USER_EMAIL_HEADER) ?? h.get(USER_EMAIL_HEADER.toLowerCase())) : (h[USER_EMAIL_HEADER] ?? h[USER_EMAIL_HEADER.toLowerCase()]);
+      encodedFullName = typeof h.get === "function" ? (h.get(USER_FULL_NAME_HEADER) ?? h.get(USER_FULL_NAME_HEADER.toLowerCase())) : (h[USER_FULL_NAME_HEADER] ?? h[USER_FULL_NAME_HEADER.toLowerCase()]);
+      encoding = typeof h.get === "function" ? (h.get(USER_FULL_NAME_ENCODING_HEADER) ?? h.get(USER_FULL_NAME_ENCODING_HEADER.toLowerCase())) : (h[USER_FULL_NAME_ENCODING_HEADER] ?? h[USER_FULL_NAME_ENCODING_HEADER.toLowerCase()]);
+    }
+    if (!email) {
+      try {
+        const requestHeaders = await headers();
+        email = requestHeaders.get(USER_EMAIL_HEADER);
+        encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
+        encoding = requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER);
+      } catch {
+        // headers() fallback
+      }
+    }
     if (!email) return null;
 
-    const encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
     const fullName =
-      encodedFullName &&
-      requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER) === PERCENT_ENCODED_UTF8
+      encodedFullName && encoding === PERCENT_ENCODED_UTF8
         ? safeDecodeURIComponent(encodedFullName)
         : null;
 

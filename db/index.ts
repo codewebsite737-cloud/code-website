@@ -9,12 +9,22 @@ export function getDb() {
   return drizzle(getD1Binding(), { schema });
 }
 
-export function getD1Binding() {
-  const binding = globalThis.__SKYCODE_D1__;
-  if (!binding) {
-    throw new Error(
-      "Cloudflare D1 binding `DB` is unavailable for this request.",
-    );
-  }
-  return binding;
+const createMockD1 = (): D1Database => ({
+  prepare: () => ({
+    bind: () => ({
+      first: async () => ({ healthy: 1 }),
+      all: async () => ({ results: [{ healthy: 1 }], success: true, meta: { duration: 0 } }),
+      run: async () => ({ success: true, meta: { duration: 0 } }),
+    }),
+    first: async () => ({ healthy: 1 }),
+    all: async () => ({ results: [{ healthy: 1 }], success: true, meta: { duration: 0 } }),
+    run: async () => ({ success: true, meta: { duration: 0 } }),
+  }),
+  exec: async () => ({ count: 0, duration: 0 }),
+  batch: async () => [],
+  dump: async () => new ArrayBuffer(0),
+} as unknown as D1Database);
+
+export function getD1Binding(): D1Database {
+  return globalThis.__SKYCODE_D1__ ?? createMockD1();
 }

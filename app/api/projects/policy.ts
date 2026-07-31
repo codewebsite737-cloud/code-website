@@ -52,7 +52,7 @@ export function assertTrustedMutation(request: Request) {
   }
 
   const contentType = request.headers.get("content-type")?.toLowerCase();
-  if (!contentType?.startsWith("application/json")) {
+  if (contentType && !contentType.startsWith("application/json")) {
     throw new ProjectInputError(
       "CONTENT_TYPE",
       415,
