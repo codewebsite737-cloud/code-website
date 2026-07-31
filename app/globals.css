@@ -1,17 +1,31 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
 
 :root {
   color-scheme: dark;
+  --nt-bg: #050505;
+  --nt-surface: #0d0d0f;
+  --nt-surface-card: #131315;
+  --nt-border: rgba(255, 255, 255, 0.14);
+  --nt-red: #ff0000;
+  --nt-red-dark: #cc0000;
+  --nt-text: #ffffff;
+  --nt-muted: #88888e;
 }
 
 * {
   box-sizing: border-box;
 }
 
+::selection {
+  background: var(--nt-red);
+  color: #ffffff;
+}
+
 html {
   min-width: 320px;
   min-height: 100%;
-  background: #090a0e;
+  background: var(--nt-bg);
 }
 
 body {
@@ -19,9 +33,9 @@ body {
   min-height: 100%;
   margin: 0;
   overflow-x: hidden;
-  background: #090a0e;
-  color: #f1f1f4;
-  font-family: var(--font-geist-sans), Arial, sans-serif;
+  background: var(--nt-bg);
+  color: var(--nt-text);
+  font-family: var(--font-geist-sans), 'Space Mono', -apple-system, sans-serif;
 }
 
 button,
@@ -39,24 +53,25 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #9c83ff;
+  outline: 2px solid var(--nt-red);
   outline-offset: 2px;
 }
 
 /* Marketing and product pages */
 
 .marketing-site {
-  --m-bg: #090a0e;
-  --m-panel: #111218;
-  --m-line: #242630;
-  --m-text: #f1f1f4;
-  --m-muted: #9a9da8;
+  --m-bg: #050505;
+  --m-panel: #0e0e11;
+  --m-line: rgba(255, 255, 255, 0.12);
+  --m-text: #ffffff;
+  --m-muted: #8a8a92;
   width: 100%;
   height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
   background:
-    radial-gradient(circle at 50% -10%, #3a267438, transparent 27%),
+    radial-gradient(circle at 50% 0%, rgba(255, 0, 0, 0.07), transparent 35%),
+    radial-gradient(circle at 90% 20%, rgba(255, 255, 255, 0.03), transparent 25%),
     var(--m-bg);
   color: var(--m-text);
   scroll-behavior: smooth;
