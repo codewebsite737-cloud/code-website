@@ -50,8 +50,12 @@ const worker = {
       return withSecurityHeaders(request, imageResponse);
     }
 
-    const isApiOrMutation = url.pathname.startsWith("/api/") || request.method !== "GET";
-    if (!isApiOrMutation && env?.ASSETS) {
+    const isStaticAsset =
+      url.pathname.startsWith("/assets/") ||
+      url.pathname.startsWith("/_vinext/") ||
+      /\.(css|js|json|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot)$/i.test(url.pathname);
+
+    if (isStaticAsset && env?.ASSETS) {
       try {
         const assetResponse = await env.ASSETS.fetch(request.clone());
         if (assetResponse && assetResponse.status >= 200 && assetResponse.status < 400) {
@@ -71,7 +75,7 @@ const worker = {
       console.error("App handler fetch error:", error);
     }
 
-    if (!isApiOrMutation && env?.ASSETS) {
+    if (env?.ASSETS) {
       try {
         const fallback = await env.ASSETS.fetch(request.clone());
         if (fallback) return withSecurityHeaders(request, fallback);
