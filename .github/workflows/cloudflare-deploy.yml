@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: skycode-cloudflare-${{ github.ref }}
@@ -73,3 +74,13 @@ jobs:
             sleep 5
           done
           exit 1
+
+      - name: Report production deployment
+        if: always() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          gh issue comment 13 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Deployment for \`$GITHUB_SHA\` finished with **$RESULT**. [Open workflow run](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
