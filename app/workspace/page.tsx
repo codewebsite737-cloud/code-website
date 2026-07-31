@@ -2755,6 +2755,7 @@ export default function Home() {
           </section>
         </aside>
 
+        {canvasMode === "code" && (
         <section className="bottom-dock" aria-label="Developer tools">
           <div className="bottom-dock-tabs">
             <div>
@@ -2867,6 +2868,7 @@ export default function Home() {
             )}
           </div>
         </section>
+        )}
 
         <div
           className="resize-handle resize-handle-ai"
