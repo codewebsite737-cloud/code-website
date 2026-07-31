@@ -26,5 +26,11 @@ const createMockD1 = (): D1Database => ({
 } as unknown as D1Database);
 
 export function getD1Binding(): D1Database {
-  return globalThis.__SKYCODE_D1__ ?? createMockD1();
+  const binding = globalThis.__SKYCODE_D1__;
+  if (!binding) {
+    throw new Error(
+      "Cloudflare D1 binding `DB` is unavailable for this request.",
+    );
+  }
+  return binding;
 }

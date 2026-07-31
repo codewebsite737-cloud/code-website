@@ -31,8 +31,60 @@ export class ProjectInputError extends Error {
   }
 }
 
-export function assertTrustedMutation(request: Request) {
-  const requestOrigin = request.headers.get("origin");
+function getHeader(request: Request, name: string): string | null {
+  const h = (request as any)?.headers;
+  if (!h) return null;
+
+  let raw: any = null;
+  if (typeof h.get === "function") {
+    try {
+      raw = h.get(name) ?? h.get(name.toLowerCase());
+    } catch {
+      // ignore
+    }
+  }
+  if (!raw && typeof h.entries === "function") {
+    try {
+      for (const [k, v] of h.entries()) {
+        if (k.toLowerCase() === name.toLowerCase()) {
+          raw = v;
+          break;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  if (!raw && typeof h === "object") {
+    for (const k of Object.keys(h)) {
+      if (k.toLowerCase() === name.toLowerCase()) {
+        raw = h[k];
+        break;
+      }
+    }
+  }
+
+  if (raw === null || raw === undefined) return null;
+  if (Array.isArray(raw)) return raw[0] ? String(raw[0]) : null;
+  return String(raw);
+}
+
+import { headers } from "next/headers";
+
+export async function assertTrustedMutation(request: Request) {
+  let requestOrigin = getHeader(request, "origin");
+  let fetchSite = getHeader(request, "sec-fetch-site");
+  let contentType = getHeader(request, "content-type")?.toLowerCase();
+
+  try {
+    const h = await headers();
+    if (!requestOrigin) requestOrigin = h.get("origin");
+    if (!fetchSite) fetchSite = h.get("sec-fetch-site");
+    if (!contentType) contentType = h.get("content-type")?.toLowerCase();
+  } catch {
+    // ignore
+  }
+
   const expectedOrigin = new URL(request.url).origin;
   if (requestOrigin && requestOrigin !== expectedOrigin) {
     throw new ProjectInputError(
@@ -42,7 +94,6 @@ export function assertTrustedMutation(request: Request) {
     );
   }
 
-  const fetchSite = request.headers.get("sec-fetch-site");
   if (fetchSite && fetchSite !== "same-origin") {
     throw new ProjectInputError(
       "CROSS_SITE",
@@ -51,7 +102,6 @@ export function assertTrustedMutation(request: Request) {
     );
   }
 
-  const contentType = request.headers.get("content-type")?.toLowerCase();
   if (contentType && !contentType.startsWith("application/json")) {
     throw new ProjectInputError(
       "CONTENT_TYPE",

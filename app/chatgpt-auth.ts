@@ -17,42 +17,60 @@ const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(req?: Request): Promise<ChatGPTUser | null> {
+  let email: string | null = null;
+  let encodedFullName: string | null = null;
+  let encoding: string | null = null;
+
   try {
-    let email: string | null = null;
-    let encodedFullName: string | null = null;
-    let encoding: string | null = null;
-
-    if (req && req.headers) {
-      const h = req.headers as any;
-      email = typeof h.get === "function" ? (h.get(USER_EMAIL_HEADER) ?? h.get(USER_EMAIL_HEADER.toLowerCase())) : (h[USER_EMAIL_HEADER] ?? h[USER_EMAIL_HEADER.toLowerCase()]);
-      encodedFullName = typeof h.get === "function" ? (h.get(USER_FULL_NAME_HEADER) ?? h.get(USER_FULL_NAME_HEADER.toLowerCase())) : (h[USER_FULL_NAME_HEADER] ?? h[USER_FULL_NAME_HEADER.toLowerCase()]);
-      encoding = typeof h.get === "function" ? (h.get(USER_FULL_NAME_ENCODING_HEADER) ?? h.get(USER_FULL_NAME_ENCODING_HEADER.toLowerCase())) : (h[USER_FULL_NAME_ENCODING_HEADER] ?? h[USER_FULL_NAME_ENCODING_HEADER.toLowerCase()]);
+    const requestHeaders = await headers();
+    if (requestHeaders && typeof requestHeaders.get === "function") {
+      email = requestHeaders.get("oai-authenticated-user-email") ?? requestHeaders.get("OAI-AUTHENTICATED-USER-EMAIL") ?? null;
+      encodedFullName = requestHeaders.get("oai-authenticated-user-full-name") ?? requestHeaders.get("OAI-AUTHENTICATED-USER-FULL-NAME") ?? null;
+      encoding = requestHeaders.get("oai-authenticated-user-full-name-encoding") ?? requestHeaders.get("OAI-AUTHENTICATED-USER-FULL-NAME-ENCODING") ?? null;
     }
-    if (!email) {
-      try {
-        const requestHeaders = await headers();
-        email = requestHeaders.get(USER_EMAIL_HEADER);
-        encodedFullName = requestHeaders.get(USER_FULL_NAME_HEADER);
-        encoding = requestHeaders.get(USER_FULL_NAME_ENCODING_HEADER);
-      } catch {
-        // headers() fallback
-      }
-    }
-    if (!email) return null;
-
-    const fullName =
-      encodedFullName && encoding === PERCENT_ENCODED_UTF8
-        ? safeDecodeURIComponent(encodedFullName)
-        : null;
-
-    return {
-      displayName: fullName ?? email,
-      email,
-      fullName,
-    };
   } catch {
-    return null;
+    // ignore
   }
+
+  if (!email && req && req.headers) {
+    try {
+      const h = req.headers as any;
+      if (typeof h.get === "function") {
+        email = h.get("oai-authenticated-user-email") ?? h.get("OAI-AUTHENTICATED-USER-EMAIL") ?? null;
+        encodedFullName = h.get("oai-authenticated-user-full-name") ?? h.get("OAI-AUTHENTICATED-USER-FULL-NAME") ?? null;
+        encoding = h.get("oai-authenticated-user-full-name-encoding") ?? h.get("OAI-AUTHENTICATED-USER-FULL-NAME-ENCODING") ?? null;
+      }
+      if (!email && typeof h.entries === "function") {
+        for (const [k, v] of h.entries()) {
+          if (k.toLowerCase() === "oai-authenticated-user-email") email = v;
+          if (k.toLowerCase() === "oai-authenticated-user-full-name") encodedFullName = v;
+          if (k.toLowerCase() === "oai-authenticated-user-full-name-encoding") encoding = v;
+        }
+      }
+      if (!email && typeof h === "object") {
+        for (const k of Object.keys(h)) {
+          if (k.toLowerCase() === "oai-authenticated-user-email") email = h[k];
+          if (k.toLowerCase() === "oai-authenticated-user-full-name") encodedFullName = h[k];
+          if (k.toLowerCase() === "oai-authenticated-user-full-name-encoding") encoding = h[k];
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!email) return null;
+
+  const fullName =
+    encodedFullName && encoding === PERCENT_ENCODED_UTF8
+      ? safeDecodeURIComponent(encodedFullName)
+      : null;
+
+  return {
+    displayName: fullName ?? email,
+    email,
+    fullName,
+  };
 }
 
 export async function requireChatGPTUser(

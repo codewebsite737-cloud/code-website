@@ -59,10 +59,14 @@ async function requireRateLimit(
 }
 
 function apiFailure(error: unknown) {
-  if (error instanceof ProjectInputError) {
+  if (
+    error instanceof ProjectInputError ||
+    (error && typeof error === "object" && ((error as any).name === "ProjectInputError" || typeof (error as any).status === "number"))
+  ) {
+    const err = error as any;
     return json(
-      { error: error.message, code: error.code },
-      { status: error.status },
+      { error: err.message, code: err.code },
+      { status: err.status || 400 },
     );
   }
 
@@ -115,7 +119,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    assertTrustedMutation(request);
+    await assertTrustedMutation(request);
     const user = await getChatGPTUser(request);
     if (!user) return unauthorized();
 
@@ -172,9 +176,9 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    await assertTrustedMutation(request);
     const user = await getChatGPTUser(request);
     if (!user) return unauthorized();
-    assertTrustedMutation(request);
 
     const rateLimit = await requireRateLimit(user.email, "PUT");
     if (!rateLimit.allowed) return tooManyRequests(rateLimit);
@@ -216,9 +220,9 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await assertTrustedMutation(request);
     const user = await getChatGPTUser(request);
     if (!user) return unauthorized();
-    assertTrustedMutation(request);
 
     const rateLimit = await requireRateLimit(user.email, "DELETE");
     if (!rateLimit.allowed) return tooManyRequests(rateLimit);

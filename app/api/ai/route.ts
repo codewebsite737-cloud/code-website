@@ -86,7 +86,7 @@ export async function POST(request: Request) {
   let configuredModel = "poolside/laguna-s-2.1:free";
 
   try {
-    assertTrustedMutation(request);
+    await assertTrustedMutation(request);
     const user = await getChatGPTUser(request);
     if (!user) {
       return json(
@@ -263,10 +263,15 @@ function apiFailure(
   ownerEmail: string,
   model: string,
 ) {
-  if (error instanceof AiInputError || error instanceof ProjectInputError) {
+  if (
+    error instanceof AiInputError ||
+    error instanceof ProjectInputError ||
+    (error && typeof error === "object" && typeof (error as any).status === "number" && (error as any).code)
+  ) {
+    const err = error as any;
     return json(
-      { code: error.code, error: error.message },
-      { status: error.status },
+      { code: err.code, error: err.message },
+      { status: err.status },
       requestId,
     );
   }

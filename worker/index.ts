@@ -50,9 +50,10 @@ const worker = {
       return withSecurityHeaders(request, imageResponse);
     }
 
-    if (env?.ASSETS) {
+    const isApiOrMutation = url.pathname.startsWith("/api/") || request.method !== "GET";
+    if (!isApiOrMutation && env?.ASSETS) {
       try {
-        const assetResponse = await env.ASSETS.fetch(new Request(request.url, request));
+        const assetResponse = await env.ASSETS.fetch(request.clone());
         if (assetResponse && assetResponse.status >= 200 && assetResponse.status < 400) {
           return withSecurityHeaders(request, assetResponse);
         }
@@ -70,9 +71,9 @@ const worker = {
       console.error("App handler fetch error:", error);
     }
 
-    if (env?.ASSETS) {
+    if (!isApiOrMutation && env?.ASSETS) {
       try {
-        const fallback = await env.ASSETS.fetch(new Request(request.url, request));
+        const fallback = await env.ASSETS.fetch(request.clone());
         if (fallback) return withSecurityHeaders(request, fallback);
       } catch {
         // Ignore fallback error
