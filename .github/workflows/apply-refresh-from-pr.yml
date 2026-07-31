@@ -29,6 +29,16 @@ jobs:
               line[10:] if line.startswith("          ") else line
               for line in script.splitlines()
           )
+          script = script.replace(
+              'workspace = replace_once(workspace, old_persist, new_persist, "persistent draft helper")',
+              '''persist_pattern = re.compile(
+              r"  function persistWorkspaceDraft\\(\\) \\{.*?\\n  async function saveProject\\(\\) \\{",
+              re.S,
+          )
+          workspace, count = persist_pattern.subn(new_persist, workspace, count=1)
+          if count != 1:
+              raise SystemExit("Could not replace persistent draft helper")''',
+          )
           exec(compile(script, 'workspace-refresh.py', 'exec'))
           PY
           rm -f .github/workflows/apply-refresh-from-pr.yml
