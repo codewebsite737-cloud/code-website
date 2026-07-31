@@ -31,11 +31,11 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    globalThis.__SKYCODE_D1__ = env.DB;
+    globalThis.__SKYCODE_D1__ = env?.DB;
     globalThis.__SKYCODE_AI_CONFIG__ = {
-      dailyLimit: env.AI_DAILY_LIMIT,
-      openRouterApiKey: env.OPENROUTER_API_KEY,
-      openRouterModel: env.OPENROUTER_MODEL,
+      dailyLimit: env?.AI_DAILY_LIMIT,
+      openRouterApiKey: env?.OPENROUTER_API_KEY,
+      openRouterModel: env?.OPENROUTER_MODEL,
     };
 
     if (url.pathname === "/_vinext/image") {
@@ -76,9 +76,9 @@ function withSecurityHeaders(request: Request, response: Response): Response {
         "default-src 'self'",
         "script-src 'self' 'unsafe-inline'",
         "script-src-attr 'none'",
-        "style-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "img-src 'self' data: blob:",
-        "font-src 'self' data:",
+        "font-src 'self' data: https://fonts.gstatic.com",
         "connect-src 'self'",
         isWorkspace ? "worker-src 'self' blob:" : "worker-src 'self'",
         isWorkspace ? "frame-src 'self' blob:" : "frame-src 'none'",
