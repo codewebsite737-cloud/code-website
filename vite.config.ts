@@ -5,9 +5,8 @@ import { sites } from "./build/sites-vite-plugin";
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
-// Keep the same bindings in local previews and production. Resource IDs are
-// intentionally omitted so Wrangler can create/bind the Cloudflare resources
-// during the first deployment instead of using a local placeholder UUID.
+// D1 is declared once in wrangler.json. Keeping it out of this generated
+// worker fragment prevents Vinext/Wrangler from merging the DB binding twice.
 const cloudflareWorkerConfig = {
   name: "code-website",
   main: "./worker/index.ts",
@@ -18,12 +17,6 @@ const cloudflareWorkerConfig = {
     binding: "ASSETS",
     run_worker_first: true,
   },
-  d1_databases: [
-    {
-      binding: "DB",
-      migrations_dir: "drizzle",
-    },
-  ],
   r2_buckets: [],
   vars: {
     AI_DAILY_LIMIT: "20",
