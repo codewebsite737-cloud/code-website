@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: apply-product-refresh
@@ -21,8 +22,10 @@ jobs:
           ref: feature/workspace-home-seo-refresh
           fetch-depth: 0
       - name: Apply embedded product refresh
+        id: refresh
         run: |
-          python <<'PY'
+          set -o pipefail
+          python <<'PY' 2>&1 | tee /tmp/refresh.log
           from pathlib import Path
           source = Path('.github/workflows/apply-workspace-home-refresh.yml').read_text()
           marker = "          python <<'PY'\n"
@@ -79,3 +82,10 @@ jobs:
           git add -A
           git commit -m "Refresh workspace persistence, homepage, and SEO"
           git push origin HEAD:feature/workspace-home-seo-refresh
+      - name: Report refresh failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LOG=$(tail -n 25 /tmp/refresh.log 2>/dev/null || echo "No refresh log was produced.")
+          gh issue comment 13 --repo "$GITHUB_REPOSITORY" --body "Workspace/homepage refresh failed on \`$GITHUB_SHA\`:\n\n\`\`\`text\n$LOG\n\`\`\`"
