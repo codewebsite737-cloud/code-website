@@ -1,26 +1,64 @@
 /* Developer tools belong to Code view only.
-   Keep this rule separate and loaded last so Preview mode can never expose
-   the terminal, logs, problems, outline, timeline, or their resize handle. */
+   Preview mode keeps only the live canvas, section editing, and Sky AI. */
+.app-shell[data-canvas-mode="preview"] .activity-bar,
+.app-shell[data-canvas-mode="preview"] .explorer.activity-panel,
+.app-shell[data-canvas-mode="preview"] .editor-column,
 .app-shell[data-canvas-mode="preview"] .bottom-dock,
 .app-shell[data-canvas-mode="preview"] .terminal-panel,
+.app-shell[data-canvas-mode="preview"] .resize-handle-preview,
 .app-shell[data-canvas-mode="preview"] .resize-handle-utility,
-.app-shell[data-canvas-mode="preview"] .explorer-footer,
 .app-shell:not([data-canvas-mode="code"]) .bottom-dock,
 .app-shell:not([data-canvas-mode="code"]) .terminal-panel,
-.app-shell:not([data-canvas-mode="code"]) .resize-handle-utility,
-.app-shell:not([data-canvas-mode="code"]) .explorer-footer {
+.app-shell:not([data-canvas-mode="code"]) .resize-handle-utility {
   display: none !important;
 }
 
-/* Preview mode should use the full available workspace height.
-   The desktop grid normally reserves rows for developer tools; collapse those
-   rows while Preview is active so the preview reaches the bottom. */
-@media (min-width: 1181px) {
+/* Keep raw HTML editing in the full Code view. */
+.app-shell[data-canvas-mode="preview"] .section-code-toggle {
+  display: none !important;
+}
+
+/* Preview mode uses a focused two-surface layout: live preview + Sky AI. */
+@media (min-width: 821px) {
   .app-shell[data-canvas-mode="preview"] {
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) var(--ai-panel-width, 320px) !important;
     grid-template-rows: minmax(0, 1fr) !important;
+    overflow: hidden !important;
   }
 
   .app-shell[data-canvas-mode="preview"] .preview-panel {
-    grid-row: 1 / -1 !important;
+    display: grid !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0;
+    min-height: 0;
   }
+
+  .app-shell[data-canvas-mode="preview"] .ai-panel {
+    display: grid !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-width: 0;
+    min-height: 0;
+    border-right: 0;
+    border-left: 1px solid #2b2e38;
+  }
+
+  .app-shell[data-canvas-mode="preview"] .resize-handle-ai {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+}
+
+/* Remove developer-only chrome while Preview is active. */
+.workspace:has(.app-shell[data-canvas-mode="preview"]) {
+  grid-template-rows: 54px minmax(0, 1fr) !important;
+}
+
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .statusbar,
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .layout-version-switcher,
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .layout-reset-button,
+.workspace:has(.app-shell[data-canvas-mode="preview"]) .avatars {
+  display: none !important;
 }
