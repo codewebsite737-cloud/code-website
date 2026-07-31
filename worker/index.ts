@@ -50,8 +50,36 @@ const worker = {
       return withSecurityHeaders(request, imageResponse);
     }
 
-    const response = await handler.fetch(request, env, ctx);
-    return withSecurityHeaders(request, response);
+    if (env?.ASSETS) {
+      try {
+        const assetResponse = await env.ASSETS.fetch(new Request(request.url, request));
+        if (assetResponse && assetResponse.status >= 200 && assetResponse.status < 400) {
+          return withSecurityHeaders(request, assetResponse);
+        }
+      } catch {
+        // Continue to app handler if asset fetch fails
+      }
+    }
+
+    try {
+      const response = await handler.fetch(request, env, ctx);
+      if (response) {
+        return withSecurityHeaders(request, response);
+      }
+    } catch (error) {
+      console.error("App handler fetch error:", error);
+    }
+
+    if (env?.ASSETS) {
+      try {
+        const fallback = await env.ASSETS.fetch(new Request(request.url, request));
+        if (fallback) return withSecurityHeaders(request, fallback);
+      } catch {
+        // Ignore fallback error
+      }
+    }
+
+    return new Response("OK", { status: 200 });
   },
 };
 
