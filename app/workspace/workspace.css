@@ -6635,3 +6635,60 @@ body:has(.workspace) {
     display: none;
   }
 }
+
+/* Collaborative Lock Banner & Locked Editor Styles */
+.workspace-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 12px;
+  padding: 10px 14px;
+  border: 1px solid #e54d4280;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2d1215 0%, #1a0a0c 100%);
+  color: #ff9e99;
+  font-size: 12.5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  animation: lockBannerFadeIn 0.25s ease-out;
+}
+
+.workspace-lock-banner .lock-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.workspace-lock-banner strong {
+  display: block;
+  color: #ffc4c0;
+  font-weight: 600;
+}
+
+.workspace-lock-banner p {
+  margin: 2px 0 0;
+  color: #d19593;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.code-editor.is-locked {
+  opacity: 0.75;
+  pointer-events: none;
+  filter: grayscale(0.2);
+}
+
+.code-editor.is-locked textarea {
+  cursor: not-allowed;
+  background: rgba(15, 16, 20, 0.6);
+}
+
+@keyframes lockBannerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

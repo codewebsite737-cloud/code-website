@@ -480,6 +480,114 @@ export default function Home() {
     sizes: PanelSizes;
   } | null>(null);
 
+  // Multi-user collaborative file locking state
+  const [lockSessionToken] = useState(() =>
+    typeof window !== "undefined"
+      ? localStorage.getItem("skycode_lock_token") ||
+        (() => {
+          const t = "token_" + Math.random().toString(36).substring(2, 10);
+          localStorage.setItem("skycode_lock_token", t);
+          return t;
+        })()
+      : "token_default",
+  );
+  const [lockedByOther, setLockedByOther] = useState(false);
+  const [lockOwnerName, setLockOwnerName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    let isMounted = true;
+    const channel =
+      typeof BroadcastChannel !== "undefined"
+        ? new BroadcastChannel("skycode_workspace_lock")
+        : null;
+
+    const currentProjId = projectId || "northstar-studio";
+    const currentFile = activeFile;
+
+    const checkLocalLock = () => {
+      try {
+        const storedLockJson = localStorage.getItem(
+          `skycode_lock:${currentProjId}:${currentFile}`,
+        );
+        if (storedLockJson) {
+          const lockData = JSON.parse(storedLockJson);
+          const now = Date.now();
+          if (lockData.expiresAt > now && lockData.token !== lockSessionToken) {
+            if (isMounted) {
+              setLockedByOther(true);
+              setLockOwnerName(lockData.owner || "Collaborator");
+            }
+            return true;
+          }
+        }
+      } catch (_e) {}
+      return false;
+    };
+
+    const syncLock = async () => {
+      if (!isMounted) return;
+
+      try {
+        const res = await fetch(
+          `/api/projects/lock?projectId=${encodeURIComponent(
+            currentProjId,
+          )}&filePath=${encodeURIComponent(currentFile)}`,
+          { cache: "no-store" },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data.locked && data.lockToken !== lockSessionToken) {
+            if (isMounted) {
+              setLockedByOther(true);
+              setLockOwnerName(data.lockedBy || "Collaborator");
+            }
+            return;
+          }
+        }
+      } catch (_e) {}
+
+      const isLockedLocally = checkLocalLock();
+      if (!isLockedLocally && isMounted) {
+        setLockedByOther(false);
+        setLockOwnerName(null);
+      }
+    };
+
+    if (channel) {
+      channel.onmessage = (event) => {
+        if (
+          event.data?.file === currentFile &&
+          event.data?.projectId === currentProjId
+        ) {
+          if (
+            event.data?.type === "LOCK_ACQUIRED" &&
+            event.data?.token !== lockSessionToken
+          ) {
+            setLockedByOther(true);
+            setLockOwnerName(event.data?.owner || "Collaborator");
+          } else if (
+            event.data?.type === "LOCK_RELEASED" &&
+            event.data?.token !== lockSessionToken
+          ) {
+            setLockedByOther(false);
+            setLockOwnerName(null);
+          }
+        }
+      };
+    }
+
+    syncLock();
+    const interval = setInterval(syncLock, 4000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      if (channel) channel.close();
+    };
+  }, [activeFile, projectId, lockSessionToken]);
+
   const changedFiles = fileMeta.filter(
     (file) => files[file.name] !== baselineFiles[file.name],
   );
@@ -2052,7 +2160,16 @@ export default function Home() {
             <span>src</span><span>›</span><span>{activeFile}</span>
             {activeFile === "index.html" && <><span>›</span><span>main.hero</span></>}
           </div>
-          <div className="code-editor">
+          {lockedByOther && (
+            <div className="workspace-lock-banner" role="alert">
+              <span className="lock-icon">🔒</span>
+              <div>
+                <strong>File locked by {lockOwnerName || "another collaborator"}</strong>
+                <p>Editing is temporarily disabled to prevent merge conflicts. Please wait until edits are completed.</p>
+              </div>
+            </div>
+          )}
+          <div className={`code-editor${lockedByOther ? " is-locked" : ""}`}>
             <div className="line-numbers" aria-hidden="true">
               {lines.map((_, index) => <span key={index}>{index + 1}</span>)}
             </div>
@@ -2063,6 +2180,7 @@ export default function Home() {
               <textarea
                 aria-label={`${activeFile} code editor`}
                 spellCheck={false}
+                readOnly={lockedByOther}
                 value={files[activeFile]}
                 onScroll={(event) => {
                   if (!codeHighlightRef.current) return;
@@ -2072,7 +2190,45 @@ export default function Home() {
                     event.currentTarget.scrollLeft;
                 }}
                 onChange={(event) => {
+                  if (lockedByOther) return;
                   const nextValue = event.currentTarget.value;
+                  const currentProjId = projectId || "northstar-studio";
+                  const currentFile = activeFile;
+                  const now = Date.now();
+
+                  try {
+                    localStorage.setItem(
+                      `skycode_lock:${currentProjId}:${currentFile}`,
+                      JSON.stringify({
+                        token: lockSessionToken,
+                        owner: "User (Active)",
+                        expiresAt: now + 30000,
+                      }),
+                    );
+                    if (typeof BroadcastChannel !== "undefined") {
+                      const channel = new BroadcastChannel("skycode_workspace_lock");
+                      channel.postMessage({
+                        type: "LOCK_ACQUIRED",
+                        projectId: currentProjId,
+                        file: currentFile,
+                        token: lockSessionToken,
+                        owner: "User (Active)",
+                      });
+                      channel.close();
+                    }
+                  } catch (_e) {}
+
+                  fetch("/api/projects/lock", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      projectId: currentProjId,
+                      filePath: currentFile,
+                      lockedBy: "Collaborator",
+                      lockToken: lockSessionToken,
+                    }),
+                  }).catch(() => {});
+
                   setFiles((current) => ({
                     ...current,
                     [activeFile]: nextValue,

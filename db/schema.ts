@@ -80,3 +80,22 @@ export const aiUsageEvents = sqliteTable(
     index("ai_usage_created_idx").on(table.createdAt),
   ],
 );
+
+export const projectLocks = sqliteTable(
+  "project_locks",
+  {
+    projectId: text("project_id").notNull(),
+    filePath: text("file_path").notNull(),
+    lockedBy: text("locked_by").notNull(),
+    lockToken: text("lock_token").notNull(),
+    updatedAtMs: integer("updated_at_ms").notNull(),
+  },
+  (table) => [
+    index("project_locks_project_file_idx").on(
+      table.projectId,
+      table.filePath,
+    ),
+    index("project_locks_updated_idx").on(table.updatedAtMs),
+  ],
+);
+
