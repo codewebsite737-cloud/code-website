@@ -1,14 +1,14 @@
 .workspace {
-  --bg: #0b0c10;
-  --panel: #101116;
-  --panel-2: #14151b;
-  --panel-3: #181a21;
-  --line: #252731;
-  --line-soft: #1e2028;
-  --text: #e7e8ed;
-  --muted: #8c909e;
+  --bg: #090a0e;
+  --panel: #111218;
+  --panel-2: #14151c;
+  --panel-3: #181922;
+  --line: #242630;
+  --line-soft: #1c1e27;
+  --text: #f1f1f4;
+  --muted: #9a9da8;
   --dim: #656977;
-  --purple: #8267f2;
+  --purple: #7159d5;
   --purple-2: #9c83ff;
   --green: #70d29c;
 }
@@ -19,8 +19,8 @@ body:has(.workspace) {
   min-height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #0b0c10;
-  color: #e7e8ed;
+  background: #090a0e;
+  color: #f1f1f4;
 }
 
 .workspace button,
@@ -55,7 +55,7 @@ body:has(.workspace) {
   min-width: 0;
   padding: 0 10px 0 14px;
   border-bottom: 1px solid var(--line);
-  background: #0e0f14;
+  background: #090a0e;
 }
 
 .project-identity,
