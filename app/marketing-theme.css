@@ -1,21 +1,25 @@
 /*
- * SkyCode marketing system - Nothing OS Design System
+ * SkyCode marketing system
+ *
+ * This file intentionally scopes the warm Replit-inspired visual language to
+ * `.marketing-site`. The coding workspace and authenticated dashboard keep
+ * their own product-specific themes.
  */
 
 .marketing-site {
-  --m-bg: #050505;
-  --m-surface: #0e0e11;
-  --m-surface-soft: #141418;
-  --m-peach: #1c1c22;
-  --m-orange: #ff0000;
-  --m-orange-dark: #cc0000;
-  --m-ink: #ffffff;
-  --m-muted: #8a8a92;
-  --m-line: rgba(255, 255, 255, 0.14);
-  color-scheme: dark;
+  --m-bg: #f7f3ed;
+  --m-surface: #fffdf9;
+  --m-surface-soft: #eee8e1;
+  --m-peach: #ffb19a;
+  --m-orange: #ff4f1f;
+  --m-orange-dark: #df3d0d;
+  --m-ink: #1c1917;
+  --m-muted: #6d665f;
+  --m-line: #ddd5cc;
+  color-scheme: light;
   background:
-    radial-gradient(circle at 50% 0%, rgba(255, 0, 0, 0.08), transparent 35rem),
-    radial-gradient(circle at 88% 31%, rgba(255, 255, 255, 0.02), transparent 25rem),
+    radial-gradient(circle at 14% 10%, #ffb39a38, transparent 23rem),
+    radial-gradient(circle at 88% 31%, #ffdfd32c, transparent 25rem),
     var(--m-bg);
   color: var(--m-ink);
   font-size: 16px;
@@ -29,8 +33,8 @@
 
 .marketing-site a:focus-visible,
 .marketing-site summary:focus-visible {
-  border-radius: 4px;
-  outline: 2px solid var(--m-orange);
+  border-radius: 6px;
+  outline: 3px solid #ff4f1f55;
   outline-offset: 4px;
 }
 
@@ -39,8 +43,8 @@
 .marketing-header {
   width: min(1200px, calc(100% - 48px));
   height: 72px;
-  border-bottom: 1px solid var(--m-line);
-  background: rgba(5, 5, 5, 0.85);
+  border-bottom-color: var(--m-line);
+  background: #f7f3ede8;
   box-shadow: none;
   backdrop-filter: blur(18px);
 }
@@ -50,32 +54,22 @@
 }
 
 .marketing-brand strong {
-  font-family: 'Space Mono', monospace;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 18px;
+  font-weight: 720;
+  letter-spacing: -.045em;
 }
 
 .marketing-logo {
-  width: 26px;
-  height: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 4px;
-  background: #000000;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-  transform: none;
+  width: 28px;
+  height: 28px;
+  border-color: var(--m-orange);
+  border-radius: 8px;
+  background: var(--m-orange);
+  box-shadow: none;
 }
 
 .marketing-logo i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--m-orange);
-  box-shadow: 0 0 8px rgba(255, 0, 0, 0.9);
-  transform: none;
+  background: #fff8f3;
 }
 
 .marketing-header nav {
@@ -85,40 +79,25 @@
 .marketing-header nav a,
 .marketing-actions a,
 .footer-links a {
-  color: #a0a0a8;
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  transition: color 0.2s ease;
+  color: #5e5751;
+  font-size: 13px;
+  font-weight: 540;
 }
 
 .marketing-header nav a:hover,
 .marketing-actions .text-link:hover,
 .footer-links a:hover {
-  color: #ffffff;
+  color: var(--m-orange-dark);
 }
 
 .marketing-actions .header-cta {
   min-height: 38px;
-  padding: 0 18px;
-  border: 1px solid var(--m-orange);
-  border-radius: 4px;
+  padding: 0 17px;
+  border-color: var(--m-orange);
+  border-radius: 999px;
   background: var(--m-orange);
   color: white;
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  box-shadow: 0 0 12px rgba(255, 0, 0, 0.25);
-  transition: all 0.2s ease;
-}
-
-.marketing-actions .header-cta:hover {
-  background: var(--m-orange-dark);
-  border-color: #ff3333;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.45);
+  box-shadow: none;
 }
 
 /* Shared type scale and actions */
@@ -126,15 +105,13 @@
 .marketing-eyebrow,
 .hero-badge,
 .popular {
-  font-family: 'Space Mono', monospace;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: .15em;
-  text-transform: uppercase;
+  letter-spacing: .11em;
 }
 
 .marketing-eyebrow {
-  color: var(--m-orange);
+  color: var(--m-orange-dark);
 }
 
 .marketing-hero h1,
@@ -142,24 +119,21 @@
 .seo-hero h1,
 .guide-header h1 {
   color: var(--m-ink);
-  font-family: 'Space Mono', 'Inter', monospace;
-  font-size: clamp(40px, 5.5vw, 68px);
-  line-height: 1.05;
-  letter-spacing: -.03em;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: clamp(48px, 6vw, 74px);
+  line-height: 1;
+  letter-spacing: -.06em;
+  font-weight: 650;
 }
 
 .page-intro h1,
 .seo-hero h1,
 .guide-header h1 {
-  font-size: clamp(38px, 5vw, 60px);
+  font-size: clamp(46px, 5.4vw, 66px);
 }
 
 .marketing-hero h1 em {
   color: var(--m-orange);
-  font-weight: 700;
-  font-style: normal;
+  font-weight: 650;
 }
 
 .section-heading h2,
@@ -169,12 +143,10 @@
 .security-controls h2,
 .guide-content h2 {
   color: var(--m-ink);
-  font-family: 'Space Mono', monospace;
-  font-size: clamp(32px, 4vw, 48px);
-  line-height: 1.08;
-  letter-spacing: -.03em;
-  font-weight: 700;
-  text-transform: uppercase;
+  font-size: clamp(36px, 4.3vw, 52px);
+  line-height: 1.04;
+  letter-spacing: -.05em;
+  font-weight: 630;
 }
 
 .hero-description,
@@ -198,39 +170,33 @@
 .primary-cta,
 .secondary-cta {
   min-height: 48px;
-  padding: 0 24px;
-  border-radius: 4px;
-  font-family: 'Space Mono', monospace;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  transition: all 0.2s ease;
+  padding: 0 21px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 680;
 }
 
 .primary-cta {
-  border: 1px solid var(--m-orange);
+  border-color: var(--m-orange);
   background: var(--m-orange);
   color: white;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
+  box-shadow: 0 14px 28px #ff4f1f20;
 }
 
 .secondary-cta {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.04);
+  border-color: #bcb3aa;
+  background: transparent;
   color: var(--m-ink);
-  backdrop-filter: blur(10px);
 }
 
 .primary-cta:hover {
-  border-color: #ff3333;
+  border-color: var(--m-orange-dark);
   background: var(--m-orange-dark);
-  box-shadow: 0 0 28px rgba(255, 0, 0, 0.5);
 }
 
 .secondary-cta:hover {
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--m-ink);
+  background: var(--m-ink);
   color: white;
 }
 
@@ -3369,171 +3335,3 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
-/* ==========================================================================
-   NOTHING TECH / NOTHING OS OVERRIDES (HOMEPAGE & GLOBAL MARKETING)
-   ========================================================================== */
-
-.marketing-site {
-  background-color: #050505 !important;
-  color: #ffffff !important;
-}
-
-/* Nothing Tech Headers & Titles */
-.marketing-site h1,
-.marketing-site h2,
-.marketing-site h3,
-.home-hero h1,
-.home-section-heading h2,
-.home-product-copy h2,
-.home-security h2,
-.home-final h2 {
-  font-family: 'Space Mono', monospace !important;
-  text-transform: uppercase !important;
-  letter-spacing: -0.03em !important;
-  color: #ffffff !important;
-}
-
-.marketing-site h1 em,
-.home-hero h1 em {
-  color: #ff0000 !important;
-  font-style: normal !important;
-}
-
-/* Subheadings & Kickers */
-.home-kicker,
-.home-card-label,
-.marketing-eyebrow,
-.hero-badge,
-.popular,
-.home-audience > span,
-.wire-card-kicker > span,
-.feature-card-kicker .card-number,
-.home-platform-grid article > span {
-  font-family: 'Space Mono', monospace !important;
-  font-size: 11px !important;
-  letter-spacing: 0.15em !important;
-  text-transform: uppercase !important;
-  color: #ff0000 !important;
-}
-
-/* Nothing Tech Cards & Panels */
-.home-story-card,
-.home-platform-grid article,
-.feature-card,
-.search-paths article,
-.detail-grid article,
-.security-principles article,
-.responsibility-grid article,
-.security-layer-grid article,
-.home-composer,
-.home-product-window {
-  background: #0e0e11 !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
-  color: #ffffff !important;
-  transition: border-color 0.25s ease, transform 0.25s ease !important;
-}
-
-.home-story-card:hover,
-.home-platform-grid article:hover,
-.feature-card:hover,
-.search-paths article:hover,
-.detail-grid article:hover {
-  border-color: rgba(255, 0, 0, 0.5) !important;
-  transform: translateY(-2px);
-}
-
-/* Force text colors inside dark cards */
-.home-story-card h3,
-.home-platform-grid h3,
-.feature-card h3,
-.search-paths h3,
-.detail-grid h2,
-.security-principles h2 {
-  color: #ffffff !important;
-  font-family: 'Space Mono', monospace !important;
-}
-
-.home-story-card p,
-.home-platform-grid p,
-.feature-card p,
-.search-paths p,
-.detail-grid p,
-.security-principles p {
-  color: #8a8a92 !important;
-}
-
-/* Nothing Tech Composer / Prompt Input Box */
-.home-composer-input {
-  background: #141418 !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
-  border-radius: 6px !important;
-  color: #ffffff !important;
-}
-
-.home-composer-input a {
-  background: #ff0000 !important;
-  border-radius: 4px !important;
-  color: #ffffff !important;
-  font-family: 'Space Mono', monospace !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 12px rgba(255, 0, 0, 0.4) !important;
-}
-
-.home-composer-input a:hover {
-  background: #cc0000 !important;
-}
-
-/* Nothing Tech Build Type Buttons & Tags */
-.home-build-types a,
-.home-audience b {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  border-radius: 4px !important;
-  color: #d0d0d8 !important;
-  font-family: 'Space Mono', monospace !important;
-  font-size: 11px !important;
-  letter-spacing: 0.08em !important;
-  transition: all 0.2s ease !important;
-}
-
-.home-build-types a:hover,
-.home-audience b:hover {
-  border-color: #ff0000 !important;
-  color: #ffffff !important;
-  background: rgba(255, 0, 0, 0.12) !important;
-}
-
-/* Final CTA Section in Nothing Tech */
-.final-cta,
-.security-final-cta,
-.home-final {
-  background: #0d0d10 !important;
-  border: 1px solid rgba(255, 0, 0, 0.4) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 0 40px rgba(255, 0, 0, 0.15) !important;
-}
-
-.final-cta h2,
-.final-cta p,
-.security-final-cta h2,
-.security-final-cta p {
-  color: #ffffff !important;
-}
-
-.final-cta .primary-cta,
-.security-final-cta .primary-cta {
-  background: #ff0000 !important;
-  border-color: #ff0000 !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 20px rgba(255, 0, 0, 0.4) !important;
-}
-
-.final-cta .secondary-cta,
-.security-final-cta .secondary-cta {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  color: #ffffff !important;
-}
-

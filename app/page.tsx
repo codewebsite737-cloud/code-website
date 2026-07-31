@@ -61,7 +61,7 @@ export default function HomePage() {
       <main>
         <section className="home-hero">
           <div className="home-hero-copy">
-            <span className="home-kicker">● SYS // AI SOFTWARE BUILDER</span>
+            <span className="home-kicker">AI SOFTWARE BUILDER</span>
             <h1>What will you build?</h1>
             <p>
               Turn an idea into working software. SkyCode plans the structure,
@@ -71,7 +71,7 @@ export default function HomePage() {
           </div>
 
           <div className="home-composer">
-            <span className="home-composer-label">SYS // DESCRIBE YOUR IDEA</span>
+            <span className="home-composer-label">Describe your idea</span>
             <div className="home-composer-input">
               <span>
                 Build a booking platform for independent studios…
@@ -97,17 +97,17 @@ export default function HomePage() {
         </section>
 
         <section className="home-audience" aria-label="Who SkyCode is built for">
-          <span>SYS // BUILT FOR</span>
+          <span>BUILT FOR</span>
           <div>
             {audiences.map((audience) => (
-              <b key={audience}>[ {audience} ]</b>
+              <b key={audience}>{audience}</b>
             ))}
           </div>
         </section>
 
         <section className="home-agent">
           <div className="home-section-heading">
-            <span>SYS // MEET SKY AI</span>
+            <span>MEET SKY AI</span>
             <h2>From a rough idea to a real product.</h2>
             <p>
               Build visually, edit directly, and move from prompt to publish
@@ -117,7 +117,7 @@ export default function HomePage() {
 
           <div className="home-agent-grid">
             <article className="home-story-card home-story-design">
-              <span className="home-card-label">SYS // DESIGN</span>
+              <span className="home-card-label">DESIGN</span>
               <h3>Shape the idea freely.</h3>
               <p>
                 Start with plain language. SkyCode turns your product goal into
@@ -132,7 +132,7 @@ export default function HomePage() {
             </article>
 
             <article className="home-story-card home-story-move">
-              <span className="home-card-label">SYS // BUILD</span>
+              <span className="home-card-label">BUILD</span>
               <h3>Move faster, with context.</h3>
               <p>
                 The assistant plans, edits multiple files, validates its work,
@@ -146,7 +146,7 @@ export default function HomePage() {
             </article>
 
             <article className="home-story-card home-story-ship">
-              <span className="home-card-label">SYS // SHIP</span>
+              <span className="home-card-label">SHIP</span>
               <h3>Real code. Ready to keep.</h3>
               <p>
                 Work with familiar files, inspect every line, preview safely,
@@ -160,7 +160,7 @@ export default function HomePage() {
             </article>
 
             <article className="home-story-card home-story-team">
-              <span className="home-card-label">SYS // REVIEW</span>
+              <span className="home-card-label">REVIEW</span>
               <h3>Build together, clearly.</h3>
               <p>
                 Keep the AI conversation, source, preview, problems, and logs in
