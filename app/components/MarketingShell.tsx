@@ -5,9 +5,6 @@ export function Brand() {
     <Link className="marketing-brand" href="/" aria-label="SkyCode home">
       <span className="marketing-logo"><i /></span>
       <strong>SkyCode</strong>
-      <span style={{ fontSize: '10px', background: 'rgba(255,0,0,0.15)', border: '1px solid #FF0000', color: '#FF0000', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
-        ● SYS // 2.0
-      </span>
     </Link>
   );
 }

@@ -70,13 +70,13 @@ export default {
     "app/layout.tsx": {
       "js": [],
       "css": [
-        "/assets/index-DBkkcoRl.css"
+        "/assets/index-NOzvwpv5.css"
       ]
     },
     "app/workspace/layout.tsx": {
       "js": [],
       "css": [
-        "/assets/index-DBkkcoRl.css"
+        "/assets/index-NOzvwpv5.css"
       ]
     }
   }
