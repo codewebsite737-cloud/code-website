@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./workspace.css";
+import "./code-view-visibility.css";
 
 export const metadata: Metadata = {
   title: "Workspace",
