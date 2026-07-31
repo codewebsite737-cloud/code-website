@@ -7,97 +7,128 @@
  */
 
 .marketing-site {
-  --m-bg: #f7f3ed;
-  --m-surface: #fffdf9;
-  --m-surface-soft: #eee8e1;
-  --m-peach: #ffb19a;
-  --m-orange: #ff4f1f;
-  --m-orange-dark: #df3d0d;
-  --m-ink: #1c1917;
-  --m-muted: #6d665f;
-  --m-line: #ddd5cc;
-  color-scheme: light;
+  --m-bg: #050505;
+  --m-surface: #0e0e0e;
+  --m-surface-soft: #161616;
+  --m-peach: #ff3333;
+  --m-orange: #FF0000;
+  --m-orange-dark: #cc0000;
+  --m-ink: #f5f5f5;
+  --m-muted: #888888;
+  --m-line: #222222;
+  color-scheme: dark;
   background:
-    radial-gradient(circle at 14% 10%, #ffb39a38, transparent 23rem),
-    radial-gradient(circle at 88% 31%, #ffdfd32c, transparent 25rem),
+    radial-gradient(circle at 14% 10%, rgba(255, 0, 0, 0.08), transparent 25rem),
+    radial-gradient(circle at 88% 31%, rgba(255, 0, 0, 0.04), transparent 28rem),
     var(--m-bg);
   color: var(--m-ink);
   font-size: 16px;
   line-height: 1.55;
+  font-family: var(--font-geist-mono), monospace, system-ui, sans-serif;
 }
 
 .marketing-site ::selection {
   background: var(--m-orange);
-  color: #fff;
+  color: #000;
 }
 
 .marketing-site a:focus-visible,
-.marketing-site summary:focus-visible {
+.marketing-site summary:focus-visible,
+.marketing-site button:focus-visible {
   border-radius: 6px;
-  outline: 3px solid #ff4f1f55;
+  outline: 2px solid var(--m-orange);
   outline-offset: 4px;
 }
 
 /* Header */
 
 .marketing-header {
-  width: min(1200px, calc(100% - 48px));
-  height: 72px;
-  border-bottom-color: var(--m-line);
-  background: #f7f3ede8;
-  box-shadow: none;
-  backdrop-filter: blur(18px);
+  width: min(1200px, calc(100% - 32px));
+  height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(14, 14, 14, 0.75);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  margin-top: 16px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .marketing-brand {
   color: var(--m-ink);
+  font-family: var(--font-geist-mono), monospace;
+  letter-spacing: -0.02em;
 }
 
 .marketing-brand strong {
-  font-size: 18px;
-  font-weight: 720;
-  letter-spacing: -.045em;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
 }
 
 .marketing-logo {
   width: 28px;
   height: 28px;
   border-color: var(--m-orange);
-  border-radius: 8px;
+  border-radius: 50%;
   background: var(--m-orange);
-  box-shadow: none;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.marketing-logo:hover {
+  transform: scale(1.08);
 }
 
 .marketing-logo i {
-  background: #fff8f3;
+  background: #000;
 }
 
 .marketing-header nav {
-  gap: clamp(20px, 2.4vw, 34px);
+  gap: clamp(16px, 2.2vw, 32px);
 }
 
 .marketing-header nav a,
 .marketing-actions a,
 .footer-links a {
-  color: #5e5751;
+  color: var(--m-muted);
   font-size: 13px;
-  font-weight: 540;
+  font-weight: 500;
+  font-family: var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .marketing-header nav a:hover,
 .marketing-actions .text-link:hover,
 .footer-links a:hover {
-  color: var(--m-orange-dark);
+  color: var(--m-ink);
 }
 
 .marketing-actions .header-cta {
-  min-height: 38px;
-  padding: 0 17px;
-  border-color: var(--m-orange);
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid var(--m-orange);
   border-radius: 999px;
   background: var(--m-orange);
-  color: white;
-  box-shadow: none;
+  color: #000;
+  font-weight: 700;
+  font-family: var(--font-geist-mono), monospace;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  box-shadow: 0 0 16px rgba(255, 0, 0, 0.3);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.marketing-actions .header-cta:hover {
+  background: #fff;
+  border-color: #fff;
+  color: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.4);
 }
 
 /* Shared type scale and actions */
