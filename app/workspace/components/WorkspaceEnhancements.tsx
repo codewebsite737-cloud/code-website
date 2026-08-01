@@ -33,6 +33,19 @@ export function WorkspaceEnhancements() {
     let wizardWasOpen = Boolean(document.querySelector(".ai-builder-overlay"));
 
     const cleanLegacyChrome = () => {
+      const versionOneButton = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          ".layout-version-switcher button",
+        ),
+      ).find((button) => button.textContent?.trim().toUpperCase() === "V1");
+
+      if (
+        versionOneButton &&
+        versionOneButton.getAttribute("aria-pressed") !== "true"
+      ) {
+        versionOneButton.click();
+      }
+
       document
         .querySelectorAll<HTMLButtonElement>(".layout-version-switcher button")
         .forEach((button) => {
@@ -43,7 +56,9 @@ export function WorkspaceEnhancements() {
       document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
         const label = button.textContent?.replace(/\s+/g, " ").trim() ?? "";
         if (
-          /^(Version 1|Version 2|Open Sky AI|Sky AI)$/i.test(label) ||
+          /^(Version 1|Version 2|Studio layout \(V1\)|Classic layout \(V2\)|Open Sky AI|Sky AI)$/i.test(
+            label,
+          ) ||
           button.getAttribute("aria-label")?.toLowerCase().includes("sky ai")
         ) {
           button.hidden = true;
