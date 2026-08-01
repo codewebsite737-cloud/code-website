@@ -2,8 +2,8 @@ export const dynamic = "force-static";
 
 import type { MetadataRoute } from "next";
 
-const baseUrl = "https://skycode-ai-workspace.skymarketing737.chatgpt.site";
-const lastModified = new Date("2026-07-30T00:00:00+03:00");
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+const lastModified = new Date("2026-08-01T00:00:00+03:00");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [

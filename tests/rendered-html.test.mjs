@@ -52,8 +52,8 @@ test("keeps the public landing page isolated from the workspace", async () => {
 
   assert.equal(response.status, 200);
   assert.match(html, /class=["']marketing-site home-replit["']/i);
-  assert.match(html, /What will you build\?/i);
-  assert.match(html, /Everything your build needs\./i);
+  assert.match(html, /Build the product\. Keep the code\./i);
+  assert.match(html, /Preview for building\. Code for development\./i);
   assert.match(html, /class=["']marketing-mobile-menu["']/i);
   assert.match(html, /Open navigation menu/i);
   assert.match(html, /href=["']\/privacy["']/i);
