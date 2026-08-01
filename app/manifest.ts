@@ -4,13 +4,14 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SkyCode AI Workspace",
+    name: "SkyCode AI Website Builder",
     short_name: "SkyCode",
-    description: "Build, edit, preview, and ship software with AI.",
+    description:
+      "Build, edit, autosave, preview, and export websites and web apps in your browser.",
     start_url: "/",
     display: "standalone",
-    background_color: "#f7f3ed",
-    theme_color: "#ff4f1f",
+    background_color: "#f7f3ec",
+    theme_color: "#ff5a24",
     icons: [
       {
         src: "/favicon.svg",
