@@ -126,41 +126,53 @@ html.skycode-resuming-project .ai-builder-overlay {
   display: none !important;
 }
 
-@media (min-width: 821px) {
-  /* Code view is now a focused code + preview workspace. */
+/* Desktop Code view keeps the familiar vertical activity bar and uses the
+   space released by the removed assistant column for editor + preview. */
+@media (min-width: 1181px) {
   .app-shell {
-    grid-template-columns: minmax(420px, 1fr) minmax(360px, 42vw) !important;
-    grid-template-rows: minmax(390px, 1fr) 44px minmax(150px, 21vh) !important;
+    grid-template-columns:
+      48px
+      minmax(420px, 1fr)
+      minmax(360px, var(--preview-panel-width, 440px)) !important;
+    grid-template-rows:
+      minmax(390px, 1fr)
+      44px
+      var(--utility-panel-height, 190px) !important;
   }
 
-  .app-shell .right-column {
-    display: contents !important;
+  .app-shell .activity-bar {
+    width: 48px !important;
+    grid-column: 1 !important;
+    grid-row: 1 / 4 !important;
   }
 
   .app-shell .editor-column {
-    grid-column: 1 !important;
-    grid-row: 1 !important;
-  }
-
-  .app-shell .preview-panel {
     grid-column: 2 !important;
     grid-row: 1 !important;
   }
 
-  .app-shell .activity-bar {
-    grid-column: 1 / 3 !important;
-    grid-row: 2 !important;
+  .app-shell .preview-panel {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
   }
 
-  .app-shell .explorer.activity-panel,
-  .app-shell .bottom-dock {
-    grid-column: 1 / 3 !important;
-    grid-row: 3 !important;
+  .app-shell[data-canvas-mode="code"] .bottom-dock {
+    grid-column: 2 / 4 !important;
+    grid-row: 2 / 4 !important;
+  }
+
+  .app-shell .resize-handle-preview {
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+  }
+
+  .app-shell .resize-handle-utility {
+    grid-column: 2 / 4 !important;
+    grid-row: 2 !important;
   }
 
   .app-shell[data-canvas-mode="code"] .explorer.activity-panel {
     display: flex !important;
-    transform: translateX(0) !important;
   }
 
   .app-shell[data-canvas-mode="code"]
@@ -170,6 +182,56 @@ html.skycode-resuming-project .ai-builder-overlay {
   }
 
   /* Preview is one full-height canvas with no developer or assistant column. */
+  .app-shell[data-canvas-mode="preview"] {
+    min-height: 0 !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .app-shell[data-canvas-mode="preview"] .preview-panel {
+    display: grid !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0;
+    min-height: 0;
+    border: 0 !important;
+  }
+}
+
+/* Medium screens stack editor and preview without reserving an empty AI
+   column. The activity and explorer rows keep their established behavior. */
+@media (max-width: 1180px) and (min-width: 821px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: 510px 360px 44px 160px !important;
+  }
+
+  .app-shell .editor-column {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .app-shell .preview-panel {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+
+  .app-shell .activity-bar {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+  }
+
+  .app-shell .explorer.activity-panel {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+  }
+
+  .app-shell[data-canvas-mode="code"] .bottom-dock {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+  }
+
   .app-shell[data-canvas-mode="preview"] {
     min-height: 0 !important;
     grid-template-columns: minmax(0, 1fr) !important;
