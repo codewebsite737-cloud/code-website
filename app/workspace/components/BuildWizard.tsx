@@ -82,7 +82,7 @@ export function BuildWizard({
             <span className="builder-step">STEP 1 OF 2</span>
             <h1 id="ai-builder-title">What do you want to build?</h1>
             <p>
-              Choose a project type first. Sky AI will shape the files, layout,
+              Choose a project type first. SkyCode will shape the files, layout,
               and interactions around it.
             </p>
             <div className="category-grid">
@@ -189,7 +189,7 @@ export function BuildWizard({
                 <span className="engine-icon">☁</span>
                 <div>
                   <b>
-                    Server Cloud AI {cloudConnected && <em>READY</em>}
+                    Protected Cloud Builder {cloudConnected && <em>READY</em>}
                   </b>
                   {cloudConnected && cloudModel && (
                     <small className="cloud-model-name">
@@ -207,7 +207,7 @@ export function BuildWizard({
                         ? "Backend ready; add the server API key to activate it."
                         : !cloudAuthenticated
                           ? "Sign in with ChatGPT to protect usage and cost."
-                          : "Activate stronger model-powered edits."}
+                          : "Activate stronger model-powered generation."}
                   </p>
                 </div>
                 <i>
@@ -228,7 +228,7 @@ export function BuildWizard({
                   <button onClick={onDisconnectCloudAi}>Disconnect</button>
                 </>
               ) : (
-                "Instant Builder remains free and local. Server Cloud AI requires sign-in and is protected by rate and daily limits."
+                "Instant Builder remains free and local. Protected Cloud Builder requires sign-in and is protected by rate and daily limits."
               )}
             </p>
 
