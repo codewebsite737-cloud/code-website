@@ -29,6 +29,8 @@ export function WorkspaceEnhancements() {
 
     let saveTimer = 0;
     let resumeTimer = 0;
+    let projectTimer = 0;
+    let wizardWasOpen = Boolean(document.querySelector(".ai-builder-overlay"));
 
     const cleanLegacyChrome = () => {
       document
@@ -75,7 +77,7 @@ export function WorkspaceEnhancements() {
       );
       if (!saveButton || saveButton.disabled) return;
       saveButton.click();
-      window.setTimeout(rememberCurrentProject, 250);
+      window.setTimeout(rememberCurrentProject, 500);
     };
 
     const scheduleSave = (delay = 900) => {
@@ -127,7 +129,9 @@ export function WorkspaceEnhancements() {
 
     const observer = new MutationObserver(() => {
       cleanLegacyChrome();
-      if (!document.querySelector(".ai-builder-overlay")) scheduleSave(1400);
+      const wizardOpen = Boolean(document.querySelector(".ai-builder-overlay"));
+      if (wizardWasOpen && !wizardOpen) scheduleSave(1400);
+      wizardWasOpen = wizardOpen;
     });
 
     document.addEventListener("input", handleInput, true);
@@ -138,6 +142,7 @@ export function WorkspaceEnhancements() {
     observer.observe(document.body, { childList: true, subtree: true });
 
     cleanLegacyChrome();
+    projectTimer = window.setInterval(rememberCurrentProject, 1000);
     resumeTimer = window.setTimeout(() => {
       document.documentElement.classList.remove("skycode-resuming-project");
       cleanLegacyChrome();
@@ -146,6 +151,7 @@ export function WorkspaceEnhancements() {
     return () => {
       window.clearTimeout(saveTimer);
       window.clearTimeout(resumeTimer);
+      window.clearInterval(projectTimer);
       observer.disconnect();
       document.removeEventListener("input", handleInput, true);
       document.removeEventListener("change", handleInput, true);
