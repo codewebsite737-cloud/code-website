@@ -2,6 +2,8 @@ export const dynamic = "force-static";
 
 import type { MetadataRoute } from "next";
 
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
@@ -16,7 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         "/callback",
       ],
     },
-    sitemap: "https://skycode-ai-workspace.skymarketing737.chatgpt.site/sitemap.xml",
-    host: "https://skycode-ai-workspace.skymarketing737.chatgpt.site",
+    sitemap: `${baseUrl}/sitemap.xml`,
+    host: baseUrl,
   };
 }
