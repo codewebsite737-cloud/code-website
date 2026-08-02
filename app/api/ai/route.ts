@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { ProjectInputError, assertTrustedMutation } from "../projects/policy";
 import {
   takeFixedWindowRateLimit,

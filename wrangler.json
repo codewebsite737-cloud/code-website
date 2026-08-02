@@ -13,7 +13,6 @@
     {
       "binding": "DB",
       "database_name": "code-website-db",
-      "database_id": "code-website-d1",
       "migrations_dir": "drizzle"
     }
   ],
