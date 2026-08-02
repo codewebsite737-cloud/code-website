@@ -13,7 +13,12 @@
     {
       "binding": "DB",
       "database_name": "code-website-db",
-      "database_id": "code-website-d1"
+      "database_id": "code-website-d1",
+      "migrations_dir": "drizzle"
     }
-  ]
+  ],
+  "vars": {
+    "AI_DAILY_LIMIT": "20",
+    "OPENROUTER_MODEL": "openai/gpt-oss-20b:free"
+  }
 }

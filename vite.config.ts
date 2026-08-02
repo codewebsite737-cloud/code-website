@@ -1,16 +1,12 @@
 import vinext from "vinext";
 import { defineConfig } from "vite";
-import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
-
-const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
-// Keep the same bindings in local previews and production. Resource IDs are
-// intentionally omitted so Wrangler can create/bind the Cloudflare resources
-// during the first deployment instead of using a local placeholder UUID.
+// D1 is declared once in wrangler.json. Keeping it out of this generated
+// worker fragment prevents Vinext/Wrangler from merging the DB binding twice.
 const cloudflareWorkerConfig = {
   name: "code-website",
   main: "./worker/index.ts",
@@ -21,8 +17,11 @@ const cloudflareWorkerConfig = {
     binding: "ASSETS",
     run_worker_first: true,
   },
-  d1_databases: [],
   r2_buckets: [],
+  vars: {
+    AI_DAILY_LIMIT: "20",
+    OPENROUTER_MODEL: "openai/gpt-oss-20b:free",
+  },
 };
 
 export default defineConfig(async () => {

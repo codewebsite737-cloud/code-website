@@ -32,58 +32,13 @@ export class ProjectInputError extends Error {
 }
 
 function getHeader(request: Request, name: string): string | null {
-  const h = (request as any)?.headers;
-  if (!h) return null;
-
-  let raw: any = null;
-  if (typeof h.get === "function") {
-    try {
-      raw = h.get(name) ?? h.get(name.toLowerCase());
-    } catch {
-      // ignore
-    }
-  }
-  if (!raw && typeof h.entries === "function") {
-    try {
-      for (const [k, v] of h.entries()) {
-        if (k.toLowerCase() === name.toLowerCase()) {
-          raw = v;
-          break;
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-  if (!raw && typeof h === "object") {
-    for (const k of Object.keys(h)) {
-      if (k.toLowerCase() === name.toLowerCase()) {
-        raw = h[k];
-        break;
-      }
-    }
-  }
-
-  if (raw === null || raw === undefined) return null;
-  if (Array.isArray(raw)) return raw[0] ? String(raw[0]) : null;
-  return String(raw);
+  return request.headers.get(name);
 }
 
-import { headers } from "next/headers";
-
 export async function assertTrustedMutation(request: Request) {
-  let requestOrigin = getHeader(request, "origin");
-  let fetchSite = getHeader(request, "sec-fetch-site");
-  let contentType = getHeader(request, "content-type")?.toLowerCase();
-
-  try {
-    const h = await headers();
-    if (!requestOrigin) requestOrigin = h.get("origin");
-    if (!fetchSite) fetchSite = h.get("sec-fetch-site");
-    if (!contentType) contentType = h.get("content-type")?.toLowerCase();
-  } catch {
-    // ignore
-  }
+  const requestOrigin = getHeader(request, "origin");
+  const fetchSite = getHeader(request, "sec-fetch-site");
+  const contentType = getHeader(request, "content-type")?.toLowerCase();
 
   const expectedOrigin = new URL(request.url).origin;
   if (requestOrigin && requestOrigin !== expectedOrigin) {
@@ -112,7 +67,7 @@ export async function assertTrustedMutation(request: Request) {
 }
 
 export async function readProjectPayload(request: Request) {
-  assertTrustedMutation(request);
+  await assertTrustedMutation(request);
 
   const contentLength = request.headers.get("content-length");
   if (contentLength) {

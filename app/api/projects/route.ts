@@ -1,9 +1,5 @@
-export const dynamic = "force-static";
-
-import { getChatGPTUser } from "../../chatgpt-auth";
 import {
   ProjectInputError,
-  assertTrustedMutation,
   cleanProjectName,
   isValidProjectId,
   normalizeTemplate,
@@ -23,27 +19,37 @@ import {
   listOwnedProjects,
   updateOwnedProject,
 } from "./store";
+import {
+  applyIdentityCookie,
+  getRequestIdentity,
+  type RequestIdentity,
+} from "../shared/session";
 
-function json(data: unknown, init: ResponseInit = {}) {
+function json(
+  data: unknown,
+  init: ResponseInit = {},
+  identity: RequestIdentity | null = null,
+) {
   const headers = new Headers(init.headers);
   headers.set("Cache-Control", "no-store");
   headers.set("Content-Type", "application/json; charset=utf-8");
   headers.set("X-Content-Type-Options", "nosniff");
   headers.set("X-Request-Id", crypto.randomUUID());
+  applyIdentityCookie(headers, identity);
   return Response.json(data, { ...init, headers });
 }
 
-function unauthorized() {
-  return json({ error: "Authentication required." }, { status: 401 });
-}
-
-function tooManyRequests(rateLimit: RateLimitState) {
+function tooManyRequests(
+  rateLimit: RateLimitState,
+  identity: RequestIdentity,
+) {
   return json(
     { error: "Too many requests. Please wait before trying again." },
     {
       status: 429,
       headers: rateLimitHeaders(rateLimit),
     },
+    identity,
   );
 }
 
@@ -52,21 +58,22 @@ function withRateLimit(rateLimit: RateLimitState): HeadersInit {
 }
 
 async function requireRateLimit(
-  ownerEmail: string,
+  ownerId: string,
   method: ProjectApiMethod,
 ) {
-  return takeProjectApiRateLimit(ownerEmail, method);
+  return takeProjectApiRateLimit(ownerId, method);
 }
 
-function apiFailure(error: unknown) {
-  if (
-    error instanceof ProjectInputError ||
-    (error && typeof error === "object" && ((error as any).name === "ProjectInputError" || typeof (error as any).status === "number"))
-  ) {
-    const err = error as any;
+function apiFailure(
+  error: unknown,
+  identity: RequestIdentity | null,
+) {
+  const knownError = normalizeApiError(error);
+  if (knownError) {
     return json(
-      { error: err.message, code: err.code },
-      { status: err.status || 400 },
+      { error: knownError.message, code: knownError.code },
+      { status: knownError.status },
+      identity,
     );
   }
 
@@ -74,16 +81,42 @@ function apiFailure(error: unknown) {
   return json(
     { error: "The project service is temporarily unavailable." },
     { status: 503 },
+    identity,
   );
 }
 
-export async function GET(request: Request) {
-  try {
-    const user = await getChatGPTUser(request);
-    if (!user) return unauthorized();
+function normalizeApiError(error: unknown) {
+  if (error instanceof ProjectInputError) {
+    return {
+      code: error.code,
+      message: error.message,
+      status: error.status,
+    };
+  }
+  if (!error || typeof error !== "object") return null;
+  const candidate = error as Record<string, unknown>;
+  if (
+    typeof candidate.status !== "number" ||
+    typeof candidate.message !== "string"
+  ) {
+    return null;
+  }
+  return {
+    code:
+      typeof candidate.code === "string"
+        ? candidate.code
+        : "PROJECT_REQUEST",
+    message: candidate.message,
+    status: candidate.status,
+  };
+}
 
-    const rateLimit = await requireRateLimit(user.email, "GET");
-    if (!rateLimit.allowed) return tooManyRequests(rateLimit);
+export async function GET(request: Request) {
+  let identity: RequestIdentity | null = null;
+  try {
+    identity = await getRequestIdentity(request);
+    const rateLimit = await requireRateLimit(identity.ownerId, "GET");
+    if (!rateLimit.allowed) return tooManyRequests(rateLimit, identity);
 
     const id = new URL(request.url).searchParams.get("id");
     if (id !== null) {
@@ -91,47 +124,54 @@ export async function GET(request: Request) {
         return json(
           { error: "Valid project ID required." },
           { status: 400, headers: withRateLimit(rateLimit) },
+          identity,
         );
       }
 
-      const project = await findOwnedProject(user.email, id);
+      const project = await findOwnedProject(identity.ownerId, id);
       if (!project) {
         return json(
           { error: "Project not found." },
           { status: 404, headers: withRateLimit(rateLimit) },
+          identity,
         );
       }
       return json(
-        { project },
+        { accountType: identity.accountType, project },
         { headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
-    const projects = await listOwnedProjects(user.email);
+    const projects = await listOwnedProjects(identity.ownerId);
     return json(
-      { projects },
+      {
+        accountType: identity.accountType,
+        displayName: identity.displayName,
+        projects,
+      },
       { headers: withRateLimit(rateLimit) },
+      identity,
     );
   } catch (error) {
-    return apiFailure(error);
+    return apiFailure(error, identity);
   }
 }
 
 export async function POST(request: Request) {
+  let identity: RequestIdentity | null = null;
   try {
-    await assertTrustedMutation(request);
-    const user = await getChatGPTUser(request);
-    if (!user) return unauthorized();
-
-    const rateLimit = await requireRateLimit(user.email, "POST");
-    if (!rateLimit.allowed) return tooManyRequests(rateLimit);
-
     const payload = await readProjectPayload(request);
+    identity = await getRequestIdentity(request);
+    const rateLimit = await requireRateLimit(identity.ownerId, "POST");
+    if (!rateLimit.allowed) return tooManyRequests(rateLimit, identity);
+
     const name = cleanProjectName(payload.name);
     if (!name) {
       return json(
         { error: "Project name is required." },
         { status: 400, headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
@@ -139,7 +179,7 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const project = {
       id: crypto.randomUUID(),
-      ownerEmail: user.email,
+      ownerEmail: identity.ownerId,
       name,
       template: normalizeTemplate(payload.template),
       files,
@@ -151,14 +191,16 @@ export async function POST(request: Request) {
       return json(
         {
           error:
-            "This account has reached the 100-project safety limit. Delete an old project before creating another.",
+            "This workspace has reached the 100-project safety limit. Delete an old project before creating another.",
         },
         { status: 409, headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
     return json(
       {
+        accountType: identity.accountType,
         project: {
           id: project.id,
           name: project.name,
@@ -168,28 +210,28 @@ export async function POST(request: Request) {
         },
       },
       { status: 201, headers: withRateLimit(rateLimit) },
+      identity,
     );
   } catch (error) {
-    return apiFailure(error);
+    return apiFailure(error, identity);
   }
 }
 
 export async function PUT(request: Request) {
+  let identity: RequestIdentity | null = null;
   try {
-    await assertTrustedMutation(request);
-    const user = await getChatGPTUser(request);
-    if (!user) return unauthorized();
-
-    const rateLimit = await requireRateLimit(user.email, "PUT");
-    if (!rateLimit.allowed) return tooManyRequests(rateLimit);
-
     const payload = await readProjectPayload(request);
+    identity = await getRequestIdentity(request);
+    const rateLimit = await requireRateLimit(identity.ownerId, "PUT");
+    if (!rateLimit.allowed) return tooManyRequests(rateLimit, identity);
+
     const id = payload.id;
     const name = cleanProjectName(payload.name);
     if (!isValidProjectId(id) || !name) {
       return json(
         { error: "Valid project ID and name are required." },
         { status: 400, headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
@@ -197,7 +239,7 @@ export async function PUT(request: Request) {
     const updatedAt = new Date().toISOString();
     const updated = await updateOwnedProject({
       id,
-      ownerEmail: user.email,
+      ownerEmail: identity.ownerId,
       name,
       files,
       updatedAt,
@@ -206,49 +248,52 @@ export async function PUT(request: Request) {
       return json(
         { error: "Project not found." },
         { status: 404, headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
     return json(
-      { project: { id, name, updatedAt } },
+      { accountType: identity.accountType, project: { id, name, updatedAt } },
       { headers: withRateLimit(rateLimit) },
+      identity,
     );
   } catch (error) {
-    return apiFailure(error);
+    return apiFailure(error, identity);
   }
 }
 
 export async function DELETE(request: Request) {
+  let identity: RequestIdentity | null = null;
   try {
-    await assertTrustedMutation(request);
-    const user = await getChatGPTUser(request);
-    if (!user) return unauthorized();
-
-    const rateLimit = await requireRateLimit(user.email, "DELETE");
-    if (!rateLimit.allowed) return tooManyRequests(rateLimit);
-
     const payload = await readProjectPayload(request);
+    identity = await getRequestIdentity(request);
+    const rateLimit = await requireRateLimit(identity.ownerId, "DELETE");
+    if (!rateLimit.allowed) return tooManyRequests(rateLimit, identity);
+
     const id = payload.id;
     if (!isValidProjectId(id)) {
       return json(
         { error: "Valid project ID required." },
         { status: 400, headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
-    const deleted = await deleteOwnedProject(user.email, id);
+    const deleted = await deleteOwnedProject(identity.ownerId, id);
     if (!deleted) {
       return json(
         { error: "Project not found." },
         { status: 404, headers: withRateLimit(rateLimit) },
+        identity,
       );
     }
 
     return json(
       { deleted: true },
       { headers: withRateLimit(rateLimit) },
+      identity,
     );
   } catch (error) {
-    return apiFailure(error);
+    return apiFailure(error, identity);
   }
 }

@@ -13,21 +13,23 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const baseUrl = "https://code-website.codewebsite737.workers.dev";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    "https://skycode-ai-workspace.skymarketing737.chatgpt.site",
-  ),
+  metadataBase: new URL(baseUrl),
   title: {
-    default: "SkyCode: AI App Builder & Online Code Editor",
+    default: "SkyCode: AI Website Builder & Online Code Editor",
     template: "%s | SkyCode",
   },
   description:
-    "Build web apps and websites with AI, edit every file in your browser, preview changes safely, and export code you can keep.",
+    "Build websites and web apps, edit sections visually or in code, autosave private projects, preview safely, and export source you can keep.",
   applicationName: "SkyCode",
-  authors: [{ name: "SkyCode" }],
+  authors: [{ name: "SkyCode", url: baseUrl }],
   creator: "SkyCode",
   publisher: "SkyCode",
   category: "technology",
+  manifest: "/manifest.webmanifest",
+  alternates: { canonical: "/" },
   robots: {
     index: true,
     follow: true,
@@ -36,22 +38,23 @@ export const metadata: Metadata = {
       follow: true,
       "max-image-preview": "large",
       "max-snippet": -1,
+      "max-video-preview": -1,
     },
   },
   openGraph: {
     siteName: "SkyCode",
     locale: "en_US",
     type: "website",
-    title: "SkyCode: AI App Builder & Online Code Editor",
+    title: "SkyCode: AI Website Builder & Online Code Editor",
     description:
-      "Build apps and websites with AI, inspect every generated file, and preview browser projects in one secure workspace.",
+      "Generate complete browser projects, edit every section or file, autosave your work, and export the source.",
     url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SkyCode: AI App Builder & Online Code Editor",
+    title: "SkyCode: AI Website Builder & Online Code Editor",
     description:
-      "Build apps and websites with AI, edit the source, and preview changes in your browser.",
+      "Build, edit, autosave, preview, undo, redo, and export real browser projects.",
   },
   icons: {
     icon: "/favicon.svg",
@@ -62,12 +65,17 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "SkyCode",
   },
+  referrer: "strict-origin-when-cross-origin",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   other: {
     "codex-preview": "development",
   },
 };
 
-const baseUrl = "https://skycode-ai-workspace.skymarketing737.chatgpt.site";
 const siteStructuredData = {
   "@context": "https://schema.org",
   "@graph": [
@@ -77,12 +85,14 @@ const siteStructuredData = {
       name: "SkyCode",
       url: baseUrl,
       logo: `${baseUrl}/favicon.svg`,
+      description:
+        "SkyCode develops a browser workspace for building and editing websites and web applications.",
     },
     {
       "@type": "WebSite",
       "@id": `${baseUrl}/#website`,
       name: "SkyCode",
-      alternateName: "SkyCode AI Workspace",
+      alternateName: "SkyCode AI Website Builder",
       url: baseUrl,
       publisher: { "@id": `${baseUrl}/#organization` },
       inLanguage: "en",

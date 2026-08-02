@@ -52,8 +52,8 @@ test("keeps the public landing page isolated from the workspace", async () => {
 
   assert.equal(response.status, 200);
   assert.match(html, /class=["']marketing-site home-replit["']/i);
-  assert.match(html, /What will you build\?/i);
-  assert.match(html, /Everything your build needs\./i);
+  assert.match(html, /Build the product\. Keep the code\./i);
+  assert.match(html, /Preview for building\. Code for development\./i);
   assert.match(html, /class=["']marketing-mobile-menu["']/i);
   assert.match(html, /Open navigation menu/i);
   assert.match(html, /href=["']\/privacy["']/i);
@@ -111,6 +111,7 @@ test("packages the complete durable database history", async () => {
     "drizzle/0000_first_bruce_banner.sql",
     "drizzle/0001_hesitant_avengers.sql",
     "drizzle/0002_round_redwing.sql",
+    "drizzle/0003_project_locks.sql",
   ];
   await Promise.all(migrations.map((migration) => access(migration)));
   const combined = (
@@ -121,6 +122,7 @@ test("packages the complete durable database history", async () => {
   assert.match(combined, /CREATE TABLE `api_rate_limits`/);
   assert.match(combined, /CREATE TABLE `project_audit_events`/);
   assert.match(combined, /CREATE TABLE `ai_usage_events`/);
+  assert.match(combined, /CREATE TABLE `project_locks`/);
 });
 
 test("renders the builder only on the noindex workspace route", async () => {
@@ -233,13 +235,16 @@ test("reports managed AI as safely unavailable until its server key exists", asy
   const body = await response.json();
 
   assert.equal(response.status, 200);
+  assert.equal(body.authenticated, true);
+  assert.equal(body.accountType, "guest");
   assert.equal(body.configured, false);
   assert.equal(body.available, false);
   assert.equal(body.model, "poolside/laguna-s-2.1:free");
   assert.match(response.headers.get("cache-control") ?? "", /no-store/i);
+  assert.match(response.headers.get("set-cookie") ?? "", /skycode_session=/i);
 });
 
-test("requires authentication before accepting a managed AI generation", async () => {
+test("starts a guest session before managed AI generation", async () => {
   const response = await request("/api/ai", {
     method: "POST",
     headers: {
@@ -251,12 +256,12 @@ test("requires authentication before accepting a managed AI generation", async (
   });
   const body = await response.json();
 
-  assert.equal(response.status, 401);
-  assert.equal(body.code, "AUTH_REQUIRED");
-  assert.match(body.signInPath, /^\/signin-with-chatgpt\?/);
+  assert.equal(response.status, 503);
+  assert.equal(body.code, "AI_NOT_CONFIGURED");
+  assert.match(response.headers.get("set-cookie") ?? "", /skycode_session=/i);
 });
 
-test("rejects authenticated cross-origin AI writes before provider access", async () => {
+test("rejects cross-origin AI writes before provider access", async () => {
   const response = await request("/api/ai", {
     method: "POST",
     headers: {
@@ -316,7 +321,6 @@ test("validates the exact bounded context sent to managed AI", async () => {
     "styles.css",
   ]);
 });
-
 
 test("keeps current free coding failover independent of structured output support", async () => {
   const providerSource = await readFile("app/api/ai/provider.ts", "utf8");
