@@ -9,13 +9,7 @@
     "binding": "ASSETS",
     "run_worker_first": true
   },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "code-website-db",
-      "migrations_dir": "drizzle"
-    }
-  ],
+
   "vars": {
     "AI_DAILY_LIMIT": "20",
     "OPENROUTER_MODEL": "openai/gpt-oss-20b:free"
