@@ -5262,20 +5262,19 @@ body:has(.workspace) {
 .workspace[data-layout-version="studio"] .top-actions .avatars,
 .workspace[data-layout-version="studio"] .top-actions .ghost-button,
 .workspace[data-layout-version="studio"] .top-actions .ai-launch-button,
+.workspace[data-layout-version="studio"] .top-actions .deploy-button,
 .workspace[data-layout-version="studio"] .layout-version-switcher,
-.workspace[data-layout-version="studio"] .layout-reset-button {
-  display: none;
-}
-
-/* Hide preview toolbar header bars in studio for cleaner look */
+.workspace[data-layout-version="studio"] .layout-reset-button,
+.workspace[data-layout-version="studio"] .workspace-overflow-menu,
 .workspace[data-layout-version="studio"] .preview-toolbar,
-.workspace[data-layout-version="studio"] .preview-url-bar {
-  display: none;
-}
-
-/* In Preview mode, show secure preview label */
-.workspace[data-layout-version="studio"][data-canvas-mode="preview"] .preview-toolbar {
-  display: flex;
+.workspace[data-layout-version="studio"] .preview-url-bar,
+.workspace[data-layout-version="studio"] .preview-device-switcher,
+.workspace[data-layout-version="studio"] .statusbar,
+.workspace[data-layout-version="studio"] .bottom-dock,
+.workspace[data-layout-version="studio"] .resize-handle-utility,
+.workspace[data-layout-version="studio"] .project-identity .crumb,
+.workspace[data-layout-version="studio"] .project-identity .save-badge {
+  display: none !important;
 }
 
 @media (min-width: 1181px) {
@@ -5284,29 +5283,26 @@ body:has(.workspace) {
     position: relative;
     gap: 10px;
     padding: 10px;
+    padding-top: 0;
     grid-template-columns:
       48px
       var(--studio-explorer-width)
       minmax(460px, 1fr)
       var(--ai-panel-width);
-    grid-template-rows:
-      minmax(390px, 1fr)
-      44px
-      var(--utility-panel-height);
+    grid-template-rows: 1fr;
     background: #000000;
   }
 
   .app-shell[data-layout-version="studio"] > .activity-bar {
     width: 48px;
     grid-column: 1;
-    grid-row: 1 / 4;
+    grid-row: 1;
     z-index: 6;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
-    padding: 7px 0 9px;
+    padding: 12px 0;
     border: 0;
-    border-right: 0;
     background: transparent;
   }
 
@@ -5321,18 +5317,20 @@ body:has(.workspace) {
     display: grid;
     place-items: center;
     padding: 0;
+    color: #5a5a6a;
   }
 
   .app-shell[data-layout-version="studio"] > .activity-bar button svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .app-shell[data-layout-version="studio"] > .activity-bar button.active {
+    color: #ffffff;
   }
 
   .app-shell[data-layout-version="studio"] > .activity-bar button.active::before {
-    inset: 7px auto 7px 0;
-    width: 2px;
-    height: auto;
-    background: #2eb6ff;
+    display: none;
   }
 
   .app-shell[data-layout-version="studio"] > .activity-bar .activity-label {
@@ -5353,8 +5351,8 @@ body:has(.workspace) {
     z-index: 3;
     display: flex;
     grid-column: 2;
-    grid-row: 1 / 4;
-    border: 1px solid #1e1e28;
+    grid-row: 1;
+    border: 1px solid #1c1c26;
     border-radius: 18px;
     background: #111115;
     box-shadow: none;
@@ -5367,7 +5365,7 @@ body:has(.workspace) {
   .app-shell[data-layout-version="studio"] > .explorer.activity-panel .panel-title {
     flex-basis: 46px;
     height: 46px;
-    border-bottom: 1px solid #20222a;
+    border-bottom: 1px solid #1c1c26;
     color: #e0e2e7;
   }
 
@@ -5401,14 +5399,13 @@ body:has(.workspace) {
     display: block;
   }
 
-  /* Floating rounded panels for center + AI */
   .app-shell[data-layout-version="studio"] .editor-column,
   .app-shell[data-layout-version="studio"] .preview-panel {
     min-width: 0;
     min-height: 0;
     grid-column: 3;
     grid-row: 1;
-    border: 1px solid #1e1e28;
+    border: 1px solid #1c1c26;
     border-radius: 18px;
     background: #111115;
     overflow: hidden;
@@ -5419,17 +5416,14 @@ body:has(.workspace) {
     min-height: 0;
     display: grid;
     grid-column: 4;
-    grid-row: 1 / 4;
+    grid-row: 1;
     grid-template-rows: 56px minmax(180px, 1fr) auto;
-    border: 1px solid #1e1e28;
+    border: 1px solid #1c1c26;
     border-radius: 18px;
-    border-right: 1px solid #1e1e28;
-    border-left: 1px solid #1e1e28;
     background: #111115;
     overflow: hidden;
   }
 
-  /* Canvas mode switching */
   .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .editor-column,
   .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .editor-column,
   .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .preview-panel {
@@ -5447,8 +5441,7 @@ body:has(.workspace) {
   }
 
   .app-shell[data-layout-version="studio"] .preview-panel {
-    grid-template-rows: 44px 40px minmax(0, 1fr);
-    border-bottom: 0;
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .app-shell[data-layout-version="studio"] .preview-canvas {
@@ -5457,7 +5450,7 @@ body:has(.workspace) {
   }
 
   .app-shell[data-layout-version="studio"] .ai-head {
-    border-bottom: 1px solid #252731;
+    border-bottom: 1px solid #1c1c26;
   }
 
   .app-shell[data-layout-version="studio"] .ai-icon {
@@ -5465,36 +5458,10 @@ body:has(.workspace) {
     background: #183024;
   }
 
-  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .bottom-dock {
-    display: grid;
-    grid-column: 3;
-    grid-row: 2 / 4;
-    grid-template-rows: 44px minmax(0, 1fr);
-    border: 1px solid #1e1e28;
-    border-radius: 18px;
-    background: #111115;
-    overflow: hidden;
-  }
-
-  .app-shell[data-layout-version="studio"] .resize-handle-ai {
-    display: grid;
-    grid-column: 4;
-    grid-row: 1 / 4;
-  }
-
-  .app-shell[data-layout-version="studio"] .resize-handle-preview {
-    display: none;
-  }
-
+  .app-shell[data-layout-version="studio"] .resize-handle-ai,
+  .app-shell[data-layout-version="studio"] .resize-handle-preview,
   .app-shell[data-layout-version="studio"] .resize-handle-utility {
-    display: grid;
-    grid-column: 3;
-    grid-row: 2;
-  }
-
-  /* Statusbar rounded */
-  .app-shell[data-layout-version="studio"] .statusbar {
-    border-radius: 0 0 18px 18px;
+    display: none;
   }
 }
 
