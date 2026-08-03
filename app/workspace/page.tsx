@@ -2274,8 +2274,44 @@ export default function Home() {
                   <div className="muted">Activity cleared. Run the preview to create a new entry.</div>
                 )}
               </div>
-            </div>
+          </div>
           )}
+          <div className="floating-prompt-capsule">
+            <textarea
+              aria-label="Ask Sky AI floating prompt"
+              placeholder="Ask Sky AI to build, edit, or explain…"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendPrompt();
+                }
+              }}
+            />
+            <div className="capsule-actions">
+              <button
+                className="capsule-engine"
+                onClick={() => {
+                  if (cloudConnected)
+                    setAiMode((mode) => (mode === "cloud" ? "instant" : "cloud"));
+                  else setOnboardingOpen(true);
+                }}
+              >
+                {aiMode === "cloud" && cloudConnected
+                  ? "Server cloud"
+                  : "Instant free"}
+              </button>
+              <button
+                className="capsule-send"
+                disabled={aiWorking}
+                onClick={() => void sendPrompt()}
+                aria-label="Send prompt"
+              >
+                <Icon name="send" size={14} />
+              </button>
+            </div>
+          </div>
         </section>
 
         <aside className="right-column">
