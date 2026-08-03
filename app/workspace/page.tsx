@@ -51,7 +51,7 @@ import {
 type ActivityPanel = "files" | "search" | "git" | "database";
 type BottomPanel = "terminal" | "problems" | "logs";
 type MobileWorkspaceView = "ai" | "code" | "preview" | "files" | "tools";
-type WorkspaceCanvasMode = "preview" | "code";
+type WorkspaceCanvasMode = "preview" | "code" | "chat";
 type WorkspaceLayoutVersion = "studio" | "classic";
 type PreviewDevice = "desktop" | "tablet" | "phone";
 type SectionInspectorTab = "content" | "design" | "ai" | "code";
@@ -1446,7 +1446,11 @@ export default function Home() {
 
   function switchCanvas(mode: WorkspaceCanvasMode) {
     setCanvasMode(mode);
-    setMobileView(mode);
+    if (mode === "chat") {
+      setMobileView("ai");
+    } else {
+      setMobileView(mode);
+    }
     if (mode === "preview" && previewHasChanges) runProject();
   }
 
@@ -1820,6 +1824,14 @@ export default function Home() {
             onClick={() => switchCanvas("code")}
           >
             Code
+          </button>
+          <button
+            className={canvasMode === "chat" ? "active" : ""}
+            role="tab"
+            aria-selected={canvasMode === "chat"}
+            onClick={() => switchCanvas("chat")}
+          >
+            Chat
           </button>
         </div>
 
@@ -2367,6 +2379,42 @@ export default function Home() {
                 sandbox="allow-scripts"
                 referrerPolicy="no-referrer"
               />
+              <div className="floating-prompt-capsule">
+                <textarea
+                  aria-label="Ask Sky AI floating prompt"
+                  placeholder="Ask Sky AI to build, edit, or explain…"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void sendPrompt();
+                    }
+                  }}
+                />
+                <div className="capsule-actions">
+                  <button
+                    className="capsule-engine"
+                    onClick={() => {
+                      if (cloudConnected)
+                        setAiMode((mode) => (mode === "cloud" ? "instant" : "cloud"));
+                      else setOnboardingOpen(true);
+                    }}
+                  >
+                    {aiMode === "cloud" && cloudConnected
+                      ? "Server cloud"
+                      : "Instant free"}
+                  </button>
+                  <button
+                    className="capsule-send"
+                    disabled={aiWorking}
+                    onClick={() => void sendPrompt()}
+                    aria-label="Send prompt"
+                  >
+                    <Icon name="send" size={14} />
+                  </button>
+                </div>
+              </div>
               {selectedSection && (
                 <aside
                   className={`section-inspector section-tab-${sectionInspectorTab}`}

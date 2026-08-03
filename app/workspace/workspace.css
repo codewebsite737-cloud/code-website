@@ -5158,48 +5158,50 @@ body:has(.workspace) {
 }
 
 .workspace-canvas-switcher {
-  height: 34px;
+  height: 38px;
   position: absolute;
   top: 50%;
   left: 50%;
   z-index: 4;
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid #30323b;
-  border-radius: 8px;
-  background: #090a0e;
-  box-shadow: 0 7px 20px #0007;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  background: #121216;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
   transform: translate(-50%, -50%);
 }
 
 .workspace-canvas-switcher button {
-  min-width: 78px;
-  height: 26px;
+  min-width: 86px;
+  height: 30px;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 0 12px;
+  padding: 0 16px;
   border: 0;
-  border-radius: 5px;
+  border-radius: 999px;
   background: transparent;
-  color: #858a97;
-  font-size: 11px;
-  font-weight: 650;
+  color: #a0a0aa;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .workspace-canvas-switcher button:hover {
-  color: #d9dbe2;
+  color: #ffffff;
 }
 
 .workspace-canvas-switcher button.active {
-  background: #ececf0;
-  color: #15161a;
-  box-shadow: inset 0 0 0 1px #ffffff, 0 2px 7px #0008;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.25);
 }
 
 .workspace-canvas-switcher button i {
@@ -5371,22 +5373,42 @@ body:has(.workspace) {
     display: block;
   }
 
+  .app-shell[data-layout-version="studio"] {
+    --studio-explorer-width: clamp(220px, 18vw, 280px);
+    position: relative;
+    gap: 12px;
+    padding: 12px;
+    grid-template-columns:
+      48px
+      var(--studio-explorer-width)
+      minmax(460px, 1fr)
+      var(--ai-panel-width);
+    grid-template-rows:
+      minmax(390px, 1fr)
+      44px
+      var(--utility-panel-height);
+    background: #000000;
+  }
+
+  .app-shell[data-layout-version="studio"] > .explorer.activity-panel,
   .app-shell[data-layout-version="studio"] .editor-column,
-  .app-shell[data-layout-version="studio"] .preview-panel {
-    min-width: 0;
-    min-height: 0;
-    grid-column: 3;
-    grid-row: 1;
-    border-right: 1px solid #292b34;
+  .app-shell[data-layout-version="studio"] .preview-panel,
+  .app-shell[data-layout-version="studio"] .ai-panel {
+    border-radius: 18px;
+    border: 1px solid #23232c;
+    background: #141418;
+    overflow: hidden;
   }
 
   .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .editor-column,
+  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .editor-column,
   .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .preview-panel {
     display: none;
   }
 
   .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .editor-column,
-  .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .preview-panel {
+  .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .preview-panel,
+  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .preview-panel {
     display: grid;
   }
 
@@ -6681,6 +6703,93 @@ body:has(.workspace) {
   background: rgba(15, 16, 20, 0.6);
 }
 
+/* Floating AI Prompt Capsule (Mockup Layout) */
+.preview-canvas {
+  position: relative;
+}
+
+.floating-prompt-capsule {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(640px, calc(100% - 48px));
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(22, 22, 28, 0.94);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7);
+  transition: all 0.2s ease;
+}
+
+.floating-prompt-capsule:focus-within {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.floating-prompt-capsule textarea {
+  width: 100%;
+  height: 44px;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+.floating-prompt-capsule textarea::placeholder {
+  color: #888894;
+}
+
+.floating-prompt-capsule .capsule-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.floating-prompt-capsule .capsule-engine {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #b0b0bb;
+  font-size: 11.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.floating-prompt-capsule .capsule-engine:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.floating-prompt-capsule .capsule-send {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000000;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.floating-prompt-capsule .capsule-send:hover {
+  transform: scale(1.06);
+  background: #f0f0f5;
+}
+
 @keyframes lockBannerFadeIn {
   from {
     opacity: 0;
@@ -6691,4 +6800,5 @@ body:has(.workspace) {
     transform: translateY(0);
   }
 }
+
 
