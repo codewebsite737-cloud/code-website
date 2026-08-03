@@ -5399,11 +5399,11 @@ body:has(.workspace) {
     display: block;
   }
 
+  /* Center panels (editor & preview) and AI panel */
   .app-shell[data-layout-version="studio"] .editor-column,
   .app-shell[data-layout-version="studio"] .preview-panel {
     min-width: 0;
     min-height: 0;
-    grid-column: 3;
     grid-row: 1;
     border: 1px solid #1c1c26;
     border-radius: 18px;
@@ -5414,8 +5414,6 @@ body:has(.workspace) {
   .app-shell[data-layout-version="studio"] .ai-panel {
     min-width: 0;
     min-height: 0;
-    display: grid;
-    grid-column: 4;
     grid-row: 1;
     grid-template-rows: 56px minmax(180px, 1fr) auto;
     border: 1px solid #1c1c26;
@@ -5424,29 +5422,71 @@ body:has(.workspace) {
     overflow: hidden;
   }
 
+  /* --- Preview Mode --- */
+  .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] {
+    grid-template-columns: 48px var(--studio-explorer-width) minmax(460px, 1fr);
+  }
+  .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .preview-panel {
+    grid-column: 3;
+    display: grid;
+  }
   .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .editor-column,
-  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .editor-column,
-  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .preview-panel {
-    display: none;
+  .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .ai-panel {
+    display: none !important;
   }
 
-  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .editor-column,
-  .app-shell[data-layout-version="studio"][data-canvas-mode="preview"] .preview-panel,
-  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .preview-panel {
+  /* --- Code Mode --- */
+  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] {
+    grid-template-columns: 48px var(--studio-explorer-width) minmax(460px, 1fr);
+  }
+  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .editor-column {
+    grid-column: 3;
     display: grid;
+  }
+  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .preview-panel,
+  .app-shell[data-layout-version="studio"][data-canvas-mode="code"] .ai-panel {
+    display: none !important;
+  }
+
+  /* --- Chat Mode --- */
+  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] {
+    grid-template-columns: 48px var(--studio-explorer-width) minmax(360px, 1fr) var(--ai-panel-width);
+  }
+  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .preview-panel {
+    grid-column: 3;
+    display: grid;
+  }
+  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .ai-panel {
+    grid-column: 4;
+    display: grid;
+  }
+  .app-shell[data-layout-version="studio"][data-canvas-mode="chat"] .editor-column {
+    display: none !important;
   }
 
   .app-shell[data-layout-version="studio"] .editor-column {
     grid-template-rows: 44px 36px minmax(0, 1fr);
+    height: 100%;
   }
 
   .app-shell[data-layout-version="studio"] .preview-panel {
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: 1fr;
+    height: 100%;
   }
 
   .app-shell[data-layout-version="studio"] .preview-canvas {
+    height: 100%;
     margin: 0;
-    border-radius: 0 0 18px 18px;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .app-shell[data-layout-version="studio"] .preview-canvas iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 18px;
   }
 
   .app-shell[data-layout-version="studio"] .ai-head {
